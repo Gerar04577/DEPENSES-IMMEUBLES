@@ -69,7 +69,7 @@ const GraphStorage = (() => {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(depenses, null, 2),
-      keepalive: true
+      keepalive: true  // garde la connexion ouverte même si l'app/page se ferme (iOS)
     });
     if (!resp.ok) throw new Error(`Échec sauvegarde des dépenses (${resp.status})`);
 

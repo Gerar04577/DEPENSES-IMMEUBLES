@@ -164,6 +164,8 @@ body{
 
 /* ---------------- Actions / filtres ---------------- */
 .actions-panel{ display:flex; flex-direction:column; gap:10px; }
+.actions-top{ display:flex; gap:8px; flex-wrap:wrap; }
+.actions-top .btn{ flex: 1 1 150px; }
 .filters{ display:flex; gap:8px; flex-wrap: wrap; }
 .filters .input{ flex: 1 1 140px; }
 
@@ -332,6 +334,15 @@ body{
   z-index: 60;
 }
 .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+.save-reminder{
+  position: sticky; top: 0; z-index: 30;
+  background: var(--warn); color:#fff;
+  font-size: 14px; padding: 12px 14px;
+  animation: slideDown .3s ease;
+}
+@keyframes slideDown{ from{ transform: translateY(-100%); opacity:0; } to{ transform: translateY(0); opacity:1; } }
+.save-reminder-content{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
 
 .save-banner{
   position: sticky; top: 0; z-index: 30;

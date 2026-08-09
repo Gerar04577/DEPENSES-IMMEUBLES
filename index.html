@@ -9,7 +9,7 @@
 <title>Dépenses Immeubles</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=1">
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 
@@ -40,7 +40,10 @@
   </section>
 
   <section class="panel actions-panel">
-    <button id="btnNouvelleDepense" class="btn btn-primary">+ Nouvelle dépense</button>
+    <div class="actions-top">
+      <button id="btnNouvelleDepense" class="btn btn-primary">+ Nouvelle dépense</button>
+      <button id="btnEnregistrerMaintenant" class="btn btn-primary" title="Enregistrer toutes les dépenses sur OneDrive">💾 Enregistrer maintenant</button>
+    </div>
     <div class="filters">
       <input type="text" id="filterSearch" placeholder="Rechercher (unité, nature, fournisseur...)" class="input">
       <select id="filterStatut" class="input">
@@ -140,16 +143,24 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="save-reminder" id="saveReminder" style="display:none;">
+  <div class="save-reminder-content">
+    <span>⚠️ N'oubliez pas d'enregistrer</span>
+    <button class="btn-icon" id="btnCloseSaveReminder" aria-label="Fermer">✕</button>
+  </div>
+</div>
+
 <div class="save-banner" id="saveBanner" style="display:none;">
   ⚠️ Dernière sauvegarde OneDrive non confirmée — vérifie ta connexion.
 </div>
 
 <footer class="app-footer">
-  <span id="versionLabel">v1</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
+  <span id="versionLabel">v2</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
 </footer>
 
 <script src="graph-auth.js?v=1"></script>
-<script src="graph-storage.js?v=1"></script>
-<script src="app.js?v=1"></script>
+<script src="graph-storage.js?v=2"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

@@ -36,6 +36,8 @@ const NATURES = [
 let depenses = [];      // tableau des dépenses
 let filtreImmeuble = "tous";
 let onedriveConnecte = false;
+let timerBanniere = null;        // timer pour bannière d'avertissement toutes les 10 min
+let reminderVisible = false;    // état de la bannière
 
 // ---- Éléments DOM ----
 const el = (id) => document.getElementById(id);
@@ -109,9 +111,36 @@ function renderUniteOptions() {
 }
 
 // ==========================================================
+// Bannière d'avertissement "N'oubliez pas d'enregistrer"
+// ==========================================================
+function afficherBanniere() {
+  const banner = el("saveReminder");
+  if (!banner) return;
+  banner.style.display = "flex";
+  reminderVisible = true;
+  // réaffichage auto toutes les 10 min
+  clearTimeout(timerBanniere);
+  timerBanniere = setTimeout(afficherBanniere, 10 * 60 * 1000);
+}
+
+function fermerBanniere() {
+  const banner = el("saveReminder");
+  if (!banner) return;
+  banner.style.display = "none";
+  reminderVisible = false;
+  // timer ne s'arrête pas — la bannière réapparaîtra dans 10 min
+}
+
+// ==========================================================
 // Chargement / sauvegarde des données
 // ==========================================================
 async function chargerDonnees() {
+  // afficher l'horodatage persistant si présent
+  const lastSave = localStorage.getItem("depenses-immeubles-last-save");
+  if (lastSave) {
+    el("lastSaveLabel").textContent = "OneDrive confirmé " + lastSave;
+  }
+
   // 1. essai OneDrive si connecté
   if (window.GraphAuth && GraphAuth.estConnecte()) {
     try {
@@ -133,19 +162,23 @@ async function chargerDonnees() {
 
 async function sauvegarderDonnees() {
   localStorage.setItem("depenses-immeubles-data", JSON.stringify(depenses));
-  el("lastSaveLabel").textContent = "sauvegardé localement " + new Date().toLocaleTimeString("fr-BE");
+  const ts = new Date().toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  el("lastSaveLabel").textContent = "sauvegardé localement " + ts;
 
   if (onedriveConnecte && window.GraphStorage) {
     marquerTentativeEnvoi();
     try {
       await GraphStorage.sauvegarderDepenses(depenses);
-      el("lastSaveLabel").textContent = "OneDrive confirmé " + new Date().toLocaleTimeString("fr-BE");
+      el("lastSaveLabel").textContent = "OneDrive confirmé " + ts;
+      localStorage.setItem("depenses-immeubles-last-save", ts);
       el("saveBanner").style.display = "none";
       localStorage.removeItem("depenses-immeubles-tentative-envoi");
     } catch (err) {
       console.error("Échec sauvegarde OneDrive:", err);
       el("saveBanner").style.display = "block";
     }
+  } else {
+    localStorage.setItem("depenses-immeubles-last-save", ts);
   }
 }
 
@@ -411,6 +444,24 @@ function attachEvents() {
     }
   });
 
+  // Bouton d'enregistrement manuel
+  el("btnEnregistrerMaintenant").addEventListener("click", async () => {
+    const btn = el("btnEnregistrerMaintenant");
+    btn.disabled = true;
+    btn.textContent = "Enregistrement...";
+    try {
+      await sauvegarderDonnees();
+      showToast("✓ Données enregistrées");
+    } catch (err) {
+      showToast("Erreur lors de l'enregistrement");
+    }
+    btn.disabled = false;
+    btn.textContent = "💾 Enregistrer maintenant";
+  });
+
+  // Fermeture de la bannière d'avertissement
+  el("btnCloseSaveReminder").addEventListener("click", fermerBanniere);
+
   window.addEventListener("beforeunload", (e) => {
     if (localStorage.getItem("depenses-immeubles-tentative-envoi")) {
       e.preventDefault();
@@ -445,6 +496,10 @@ async function verifierReprise() {
 // ==========================================================
 document.addEventListener("DOMContentLoaded", async () => {
   init();
+  
+  // Afficher la bannière d'avertissement au démarrage
+  afficherBanniere();
+  
   if (window.GraphAuth) {
     const dejaConnecte = await GraphAuth.initSilencieux();
     if (dejaConnecte) {
