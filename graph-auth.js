@@ -9,7 +9,7 @@
 //   - GRAPH_CLIENT_ID : l'ID d'application (client)
 //   - REDIRECT_URI     : l'URL GitHub Pages exacte de l'app
 //
-const GRAPH_CLIENT_ID = "COLLER_ICI_LE_CLIENT_ID_ENTRA";
+const GRAPH_CLIENT_ID = "745262b4-1b37-47de-ab19-491d7e1258a1";
 const GRAPH_REDIRECT_URI = window.location.origin + window.location.pathname;
 const GRAPH_AUTHORITY = "https://login.microsoftonline.com/consumers";
 const GRAPH_SCOPES = "Files.ReadWrite offline_access";
