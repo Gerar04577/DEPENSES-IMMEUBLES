@@ -1,0 +1,107 @@
+// ==========================================================
+// graph-storage.js — lecture/écriture OneDrive (Microsoft Graph)
+// Dossier utilisé : "Immobilier 2025-2026/DEPENSES-IMMEUBLES"
+// (dans le dossier partagé, au même niveau que "VeroS" et
+// "GESTION-LOYERS" — voir /areas/veros.md et /areas/loyers-percus-pwa.md)
+// ==========================================================
+
+const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
+const DOSSIER_RACINE = "Immobilier 2025-2026";
+const DOSSIER_APP = "DEPENSES-IMMEUBLES";
+const SOUS_DOSSIER_JUSTIFICATIFS = "justificatifs";
+const FICHIER_DONNEES = "depenses-data.json";
+
+const GraphStorage = (() => {
+
+  function encoderChemin(chemin) {
+    return chemin.split("/").map(encodeURIComponent).join("/");
+  }
+
+  async function appelGraph(url, options = {}) {
+    const token = await GraphAuth.obtenirAccessToken();
+    const resp = await fetch(url, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return resp;
+  }
+
+  // ---- S'assure qu'un dossier existe (le crée sinon), par chemin complet ----
+  async function assurerDossier(cheminParent, nomDossier) {
+    const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(cheminParent)}:/children`;
+    const resp = await appelGraph(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: nomDossier,
+        folder: {},
+        "@microsoft.graph.conflictBehavior": "fail"
+      })
+    });
+    // 409 = le dossier existe déjà, ce qui est le résultat voulu
+    if (resp.ok || resp.status === 409) return true;
+    throw new Error(`Impossible de créer le dossier ${nomDossier} (${resp.status})`);
+  }
+
+  async function assurerArborescence() {
+    await assurerDossier(DOSSIER_RACINE, DOSSIER_APP);
+    await assurerDossier(`${DOSSIER_RACINE}/${DOSSIER_APP}`, SOUS_DOSSIER_JUSTIFICATIFS);
+  }
+
+  // ---- Dépenses (fichier JSON unique) ----
+  async function chargerDepenses() {
+    const chemin = `${DOSSIER_RACINE}/${DOSSIER_APP}/${FICHIER_DONNEES}`;
+    const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
+    const resp = await appelGraph(url);
+    if (resp.status === 404) return [];
+    if (!resp.ok) throw new Error(`Échec lecture des dépenses (${resp.status})`);
+    return await resp.json();
+  }
+
+  async function sauvegarderDepenses(depenses) {
+    await assurerArborescence();
+    const chemin = `${DOSSIER_RACINE}/${DOSSIER_APP}/${FICHIER_DONNEES}`;
+    const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
+    const resp = await appelGraph(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(depenses, null, 2),
+      keepalive: true
+    });
+    if (!resp.ok) throw new Error(`Échec sauvegarde des dépenses (${resp.status})`);
+
+    // vérification par relecture (même principe que Gestion Loyers)
+    const relu = await chargerDepenses();
+    if (JSON.stringify(relu) !== JSON.stringify(depenses)) {
+      throw new Error("Vérification après sauvegarde non concordante");
+    }
+    return true;
+  }
+
+  // ---- Justificatifs (upload simple, jusqu'à 4 Mo) ----
+  async function televerserJustificatif(file, expenseId) {
+    await assurerArborescence();
+    if (file.size > 4 * 1024 * 1024) {
+      throw new Error("Fichier trop volumineux (max 4 Mo pour l'instant)");
+    }
+    const nomFichier = `${expenseId}_${file.name}`.replace(/[\\/:*?"<>|]/g, "_");
+    const chemin = `${DOSSIER_RACINE}/${DOSSIER_APP}/${SOUS_DOSSIER_JUSTIFICATIFS}/${nomFichier}`;
+    const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
+
+    const resp = await appelGraph(url, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file
+    });
+    if (!resp.ok) throw new Error(`Échec envoi du justificatif (${resp.status})`);
+    const item = await resp.json();
+    return { nom: file.name, webUrl: item.webUrl, itemId: item.id };
+  }
+
+  return { chargerDepenses, sauvegarderDepenses, televerserJustificatif, assurerArborescence };
+})();
+
+window.GraphStorage = GraphStorage;

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1B2A4A">
+<title>Dépenses Immeubles</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-mark">DI</span>
+      <div class="brand-text">
+        <h1>Dépenses Immeubles</h1>
+        <span class="brand-sub">Registre des travaux &amp; charges</span>
+      </div>
+    </div>
+    <div class="conn-status" id="connStatus">
+      <button id="btnConnect" class="btn btn-ghost">Se connecter à OneDrive</button>
+      <span id="connLabel" class="conn-label"></span>
+    </div>
+  </div>
+  <nav class="tabs" id="buildingTabs" aria-label="Immeubles">
+    <button class="tab active" data-immeuble="tous">Tous</button>
+    <!-- généré en JS -->
+  </nav>
+</header>
+
+<main class="content">
+
+  <section class="panel totals-panel" id="totalsPanel" aria-label="Totaux">
+    <div class="totals-row" id="totalsRow"></div>
+  </section>
+
+  <section class="panel actions-panel">
+    <button id="btnNouvelleDepense" class="btn btn-primary">+ Nouvelle dépense</button>
+    <div class="filters">
+      <input type="text" id="filterSearch" placeholder="Rechercher (unité, nature, fournisseur...)" class="input">
+      <select id="filterStatut" class="input">
+        <option value="tous">Tous statuts</option>
+        <option value="payé">Payé</option>
+        <option value="à payer">À payer</option>
+      </select>
+      <select id="filterTri" class="input">
+        <option value="date-desc">Date (récent → ancien)</option>
+        <option value="date-asc">Date (ancien → récent)</option>
+        <option value="montant-desc">Montant (haut → bas)</option>
+        <option value="montant-asc">Montant (bas → haut)</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="panel" id="expenseListPanel">
+    <div id="expenseList" class="expense-list">
+      <p class="empty-state">Aucune dépense enregistrée pour l'instant. Ajoute la première avec le bouton ci-dessus.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- Formulaire dépense (modal) -->
+<div class="modal-backdrop" id="modalBackdrop"></div>
+<div class="modal" id="expenseModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2 id="modalTitle">Nouvelle dépense</h2>
+      <button class="btn-icon" id="btnCloseModal" aria-label="Fermer">✕</button>
+    </div>
+    <form id="expenseForm" class="modal-body">
+      <input type="hidden" id="fId">
+
+      <div class="field-row">
+        <label for="fImmeuble">Immeuble</label>
+        <select id="fImmeuble" required class="input"></select>
+      </div>
+
+      <div class="field-row">
+        <label for="fUnite">Studio / appartement</label>
+        <select id="fUnite" required class="input"></select>
+      </div>
+
+      <div class="field-row two-col">
+        <div>
+          <label for="fDate">Date des travaux</label>
+          <input type="date" id="fDate" required class="input">
+        </div>
+        <div>
+          <label for="fMontant">Montant (€)</label>
+          <input type="number" id="fMontant" step="0.01" min="0" required class="input" placeholder="0.00">
+        </div>
+      </div>
+
+      <div class="field-row two-col">
+        <div>
+          <label for="fNature">Nature</label>
+          <select id="fNature" required class="input"></select>
+        </div>
+        <div>
+          <label for="fStatut">Statut</label>
+          <select id="fStatut" class="input">
+            <option value="payé">Payé</option>
+            <option value="à payer">À payer</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <label for="fFournisseur">Fournisseur / prestataire</label>
+        <input type="text" id="fFournisseur" class="input" placeholder="Ex. Plomberie Dupont">
+      </div>
+
+      <div class="field-row">
+        <label for="fDescription">Description</label>
+        <textarea id="fDescription" class="input" rows="3" placeholder="Détail des travaux effectués..."></textarea>
+      </div>
+
+      <div class="field-row">
+        <label for="fJustificatif">Justificatif (facture / photo)</label>
+        <input type="file" id="fJustificatif" accept="application/pdf,image/*" class="input">
+        <div id="justificatifCourant" class="justificatif-courant"></div>
+        <p class="field-hint">Enregistré directement dans OneDrive, dossier DEPENSES-IMMEUBLES/justificatifs.</p>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="btnSupprimerDepense" class="btn btn-danger" style="display:none;">Supprimer</button>
+        <div class="modal-actions-right">
+          <button type="button" id="btnAnnuler" class="btn btn-ghost">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="save-banner" id="saveBanner" style="display:none;">
+  ⚠️ Dernière sauvegarde OneDrive non confirmée — vérifie ta connexion.
+</div>
+
+<footer class="app-footer">
+  <span id="versionLabel">v1</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
+</footer>
+
+<script src="graph-auth.js?v=1"></script>
+<script src="graph-storage.js?v=1"></script>
+<script src="app.js?v=1"></script>
+</body>
+</html>

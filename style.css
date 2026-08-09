@@ -1,0 +1,345 @@
+/* ============================================================
+   Dépenses Immeubles — tokens
+   Palette "plan de chantier" : papier bleu-gris pâle, encre
+   ardoise profonde, cuivre (matière des travaux de plomberie),
+   vert/rouge de statut sobres.
+   ============================================================ */
+:root{
+  --ink:          #1B2A4A;
+  --ink-soft:     #3D5170;
+  --blueprint:    #24457A;
+  --paper:        #EEF2F8;
+  --paper-line:   #DCE4F0;
+  --surface:      #FFFFFF;
+  --copper:       #B8722E;
+  --copper-dark:  #8F5A24;
+  --ok:           #2F7A55;
+  --ok-bg:        #E4F3EA;
+  --warn:         #B23A3A;
+  --warn-bg:      #FBE9E7;
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 16px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+
+*{ box-sizing: border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  font-family: var(--font-sans);
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 48px;
+}
+
+/* ---------------- Topbar ---------------- */
+.topbar{
+  background: var(--ink);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: 0 2px 10px rgba(27,42,74,0.25);
+}
+.topbar-inner{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+}
+.brand{ display:flex; align-items:center; gap:10px; }
+.brand-mark{
+  font-family: var(--font-mono);
+  font-weight:700;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  background: var(--copper);
+  color: #201205;
+  border-radius: var(--radius-s);
+  padding: 5px 8px;
+}
+.brand-text h1{
+  font-size: 17px;
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.brand-sub{
+  font-size: 11px;
+  color: #AEB9CC;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.conn-status{ display:flex; align-items:center; gap:8px; }
+.conn-label{ font-size: 11px; color:#AEB9CC; font-family: var(--font-mono); }
+
+.tabs{
+  display:flex;
+  gap: 6px;
+  overflow-x:auto;
+  padding: 0 12px 10px;
+  -webkit-overflow-scrolling: touch;
+}
+.tab{
+  flex: 0 0 auto;
+  background: rgba(255,255,255,0.08);
+  color: #E4E9F2;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab.active{
+  background: var(--copper);
+  border-color: var(--copper);
+  color: #201205;
+  font-weight: 600;
+}
+
+/* ---------------- Layout ---------------- */
+.content{
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 16px 14px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.panel{
+  background: var(--surface);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius-l);
+  padding: 14px;
+}
+
+/* ---------------- Totaux ---------------- */
+.totals-panel{ padding: 0; overflow:hidden; }
+.totals-row{
+  display:flex;
+  overflow-x:auto;
+  -webkit-overflow-scrolling: touch;
+}
+.total-card{
+  flex: 1 0 150px;
+  padding: 14px 16px;
+  border-right: 1px dashed var(--paper-line);
+  position: relative;
+}
+.total-card:last-child{ border-right:none; }
+.total-card.grand{
+  background: var(--ink);
+  color: #fff;
+}
+.total-card .label{
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  display:block;
+  margin-bottom: 4px;
+}
+.total-card.grand .label{ color:#AEB9CC; }
+.total-card .amount{
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--copper-dark);
+}
+.total-card.grand .amount{ color: var(--copper); }
+.total-card .count{
+  display:block;
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+.total-card.grand .count{ color:#8C9AB5; }
+
+/* ---------------- Actions / filtres ---------------- */
+.actions-panel{ display:flex; flex-direction:column; gap:10px; }
+.filters{ display:flex; gap:8px; flex-wrap: wrap; }
+.filters .input{ flex: 1 1 140px; }
+
+.input{
+  font-family: var(--font-sans);
+  font-size: 14px;
+  padding: 9px 11px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius-s);
+  background: var(--paper);
+  color: var(--ink);
+  width: 100%;
+}
+.input:focus{
+  outline: 2px solid var(--copper);
+  outline-offset: 1px;
+  background: #fff;
+}
+
+.btn{
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-s);
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.btn-primary{ background: var(--copper); color: #201205; }
+.btn-primary:hover{ background: var(--copper-dark); color:#fff; }
+.btn-ghost{ background: transparent; border-color: rgba(255,255,255,0.3); color:#fff; }
+.actions-panel .btn-ghost, .modal .btn-ghost{ border-color: var(--paper-line); color: var(--ink); background:#fff; }
+.btn-danger{ background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.btn-icon{
+  background:none; border:none; font-size:18px; cursor:pointer; color: var(--ink-soft);
+  padding: 4px 8px;
+}
+
+/* ---------------- Liste des dépenses ---------------- */
+.expense-list{ display:flex; flex-direction:column; gap:10px; }
+.empty-state{ color: var(--ink-soft); font-size: 14px; text-align:center; padding: 24px 8px; }
+
+.expense-card{
+  position: relative;
+  display:grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items:center;
+  padding: 12px 14px;
+  border: 1px solid var(--paper-line);
+  border-left: 4px solid var(--copper);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  cursor: pointer;
+}
+.expense-card.statut-a-payer{ border-left-color: var(--warn); }
+.expense-card .ref{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  opacity: 0.55;
+}
+.expense-card .main .top-line{
+  display:flex; gap:8px; align-items:baseline; flex-wrap:wrap;
+}
+.expense-card .nature{ font-weight: 700; font-size: 14px; }
+.expense-card .unite{ font-size: 12.5px; color: var(--ink-soft); }
+.expense-card .desc{
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+.expense-card .meta-line{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-top: 5px;
+  display:flex; gap:10px; flex-wrap: wrap;
+}
+.expense-card .amount-col{ text-align:right; }
+.expense-card .amount{
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ink);
+}
+.badge-statut{
+  display:inline-block;
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-top: 4px;
+}
+.badge-statut.paye{ background: var(--ok-bg); color: var(--ok); }
+.badge-statut.a-payer{ background: var(--warn-bg); color: var(--warn); }
+.badge-justif{
+  font-size: 10.5px;
+  color: var(--copper-dark);
+  margin-top: 4px;
+}
+
+/* ---------------- Modal ---------------- */
+.modal-backdrop{
+  display:none;
+  position: fixed; inset:0;
+  background: rgba(27,42,74,0.45);
+  z-index: 40;
+}
+.modal{
+  display:none;
+  position: fixed;
+  inset: 0;
+  z-index: 41;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal.open, .modal-backdrop.open{ display:flex; }
+.modal-card{
+  background:#fff;
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  overflow-y: auto;
+  border-radius: 18px 18px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+@media (min-width: 640px){
+  .modal{ align-items:center; }
+  .modal-card{ border-radius: var(--radius-l); max-height: 88vh; }
+}
+.modal-head{
+  display:flex; justify-content:space-between; align-items:center;
+  padding: 16px 16px 6px;
+  position: sticky; top:0; background:#fff; z-index:2;
+}
+.modal-head h2{ font-size:16px; margin:0; }
+.modal-body{ padding: 8px 16px 16px; display:flex; flex-direction:column; gap:12px; }
+.field-row label{
+  display:block; font-size: 12px; font-weight:600; color: var(--ink-soft);
+  margin-bottom: 4px; text-transform: uppercase; letter-spacing:0.03em;
+}
+.field-row.two-col{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field-hint{ font-size: 11px; color: var(--ink-soft); margin: 4px 0 0; }
+.justificatif-courant{ font-size: 12.5px; margin-top: 6px; }
+.justificatif-courant a{ color: var(--copper-dark); }
+
+.modal-actions{
+  display:flex; justify-content:space-between; align-items:center;
+  margin-top: 6px; gap: 10px; flex-wrap: wrap;
+}
+.modal-actions-right{ display:flex; gap:8px; margin-left:auto; }
+
+/* ---------------- Toast / bannière ---------------- */
+.toast{
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+  background: var(--ink); color:#fff; padding: 10px 16px; border-radius: 999px;
+  font-size: 13px; opacity:0; pointer-events:none; transition: all .2s ease;
+  z-index: 60;
+}
+.toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+.save-banner{
+  position: sticky; top: 0; z-index: 30;
+  background: var(--warn); color:#fff; text-align:center;
+  font-size: 13px; padding: 8px 12px;
+}
+
+.app-footer{
+  text-align:center; font-family: var(--font-mono); font-size: 11px;
+  color: var(--ink-soft); padding: 18px 0 6px;
+}
