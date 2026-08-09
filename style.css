@@ -363,3 +363,7 @@ body{
 /* Force update: 2026-08-09 v4 - fix save-reminder width */
 
 /* Force update: 2026-08-09 v7 - hard reset disconnect flex layout */
+
+/* v8: improved disconnect flow */
+
+:root { --v8-marker: 'v8-disconnect-flow'; }

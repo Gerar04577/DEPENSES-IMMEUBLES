@@ -202,3 +202,7 @@ const GraphAuth = (() => {
 window.GraphAuth = GraphAuth;
 
 // Force update: 2026-08-09 v7 - hard reset logging pour mail
+
+// v8: reconnect mechanism without reload
+
+window.DEPENSES_V8_RECONNECT = true; // v8 marker for disconnect/reconnect flow
