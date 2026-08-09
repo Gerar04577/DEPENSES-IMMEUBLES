@@ -201,4 +201,4 @@ const GraphAuth = (() => {
 
 window.GraphAuth = GraphAuth;
 
-// Force update: 2026-08-09 v6 - debug logging pour mail
+// Force update: 2026-08-09 v7 - hard reset logging pour mail
