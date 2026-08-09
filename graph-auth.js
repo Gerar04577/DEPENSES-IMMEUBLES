@@ -172,14 +172,24 @@ const GraphAuth = (() => {
 
   async function obtenirMailUtilisateur() {
     const token = await obtenirAccessToken();
-    if (!token) return null;
+    console.log("obtenirMailUtilisateur - token:", token ? "présent" : "absent");
+    if (!token) {
+      console.log("pas de token pour récupérer le mail");
+      return null;
+    }
     try {
       const resp = await fetch("https://graph.microsoft.com/v1.0/me", {
         headers: { "Authorization": `Bearer ${token}` }
       });
-      if (!resp.ok) return null;
+      console.log("Microsoft Graph /me response:", resp.status);
+      if (!resp.ok) {
+        console.log("erreur Microsoft Graph:", resp.status, resp.statusText);
+        return null;
+      }
       const data = await resp.json();
-      return data.userPrincipalName || data.mail;
+      const mail = data.userPrincipalName || data.mail;
+      console.log("Mail récupéré:", mail);
+      return mail;
     } catch (err) {
       console.error("Erreur récupération mail:", err);
       return null;
@@ -191,4 +201,4 @@ const GraphAuth = (() => {
 
 window.GraphAuth = GraphAuth;
 
-// Force update: 2026-08-09 v5 - obtenirMailUtilisateur
+// Force update: 2026-08-09 v6 - debug logging pour mail

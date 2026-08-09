@@ -3,7 +3,7 @@
 // Application indépendante (pas de lien avec VeroS / Gestion Loyers)
 // ==========================================================
 
-const APP_VERSION = "v5";
+const APP_VERSION = "v6";
 document.getElementById("versionLabel").textContent = APP_VERSION;
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -195,10 +195,16 @@ function majStatutConnexion(connecte) {
   
   // Récupérer et afficher le mail
   if (connecte && window.GraphAuth) {
+    el("userEmail").textContent = "Chargement...";
     GraphAuth.obtenirMailUtilisateur().then(mail => {
       if (mail) {
         el("userEmail").textContent = mail;
+      } else {
+        el("userEmail").textContent = "(mail non disponible)";
       }
+    }).catch(err => {
+      console.error("Erreur mail:", err);
+      el("userEmail").textContent = "(erreur)";
     });
   }
 }
@@ -532,4 +538,4 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // Force update: 2026-08-09 v3 release
 
-// Force update: 2026-08-09 v5 - user email + disconnect
+// Force update: 2026-08-09 v6 - fix layout et debug mail + disconnect
