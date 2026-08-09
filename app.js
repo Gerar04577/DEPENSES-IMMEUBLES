@@ -3,7 +3,7 @@
 // Application indépendante (pas de lien avec VeroS / Gestion Loyers)
 // ==========================================================
 
-const APP_VERSION = "v4";
+const APP_VERSION = "v5";
 document.getElementById("versionLabel").textContent = APP_VERSION;
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -190,6 +190,17 @@ function majStatutConnexion(connecte) {
   onedriveConnecte = connecte;
   el("connLabel").textContent = connecte ? "Connecté à OneDrive" : "";
   el("btnConnect").textContent = connecte ? "Reconnecter" : "Se connecter à OneDrive";
+  el("userEmail").style.display = connecte ? "block" : "none";
+  el("btnDisconnect").style.display = connecte ? "inline" : "none";
+  
+  // Récupérer et afficher le mail
+  if (connecte && window.GraphAuth) {
+    GraphAuth.obtenirMailUtilisateur().then(mail => {
+      if (mail) {
+        el("userEmail").textContent = mail;
+      }
+    });
+  }
 }
 
 // ==========================================================
@@ -444,6 +455,15 @@ function attachEvents() {
     }
   });
 
+  el("btnDisconnect").addEventListener("click", () => {
+    if (window.GraphAuth) {
+      GraphAuth.deconnecter();
+      majStatutConnexion(false);
+      el("userEmail").textContent = "";
+      showToast("Déconnecté");
+    }
+  });
+
   // Bouton d'enregistrement manuel
   el("btnEnregistrerMaintenant").addEventListener("click", async () => {
     const btn = el("btnEnregistrerMaintenant");
@@ -511,3 +531,5 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // Force update: 2026-08-09 v3 release
+
+// Force update: 2026-08-09 v5 - user email + disconnect

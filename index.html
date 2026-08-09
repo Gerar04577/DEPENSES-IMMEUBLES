@@ -9,7 +9,7 @@
 <title>Dépenses Immeubles</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -25,6 +25,8 @@
     <div class="conn-status" id="connStatus">
       <button id="btnConnect" class="btn btn-ghost">Se connecter à OneDrive</button>
       <span id="connLabel" class="conn-label"></span>
+      <span id="userEmail" class="user-email" style="display:none; font-size:12px; opacity:0.8;"></span>
+      <button id="btnDisconnect" class="btn btn-ghost" style="display:none; font-size:12px;">Déconnecter</button>
     </div>
   </div>
   <nav class="tabs" id="buildingTabs" aria-label="Immeubles">
@@ -156,12 +158,14 @@
 </div>
 
 <footer class="app-footer">
-  <span id="versionLabel">v4</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
+  <span id="versionLabel">v5</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
 </footer>
 
-<script src="graph-auth.js?v=4"></script>
-<script src="graph-storage.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<script src="graph-auth.js?v=5"></script>
+<script src="graph-storage.js?v=5"></script>
+<script src="app.js?v=5"></script>
 <!-- Force update: 2026-08-09 v3 release with save button & reminder banner -->
 </body>
 </html>
+
+<!-- Force update: 2026-08-09 v5 - user email + disconnect -->

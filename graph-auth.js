@@ -170,7 +170,25 @@ const GraphAuth = (() => {
     localStorage.removeItem(LS_REFRESH_TOKEN);
   }
 
-  return { connecter, deconnecter, estConnecte, obtenirAccessToken, initSilencieux };
+  async function obtenirMailUtilisateur() {
+    const token = await obtenirAccessToken();
+    if (!token) return null;
+    try {
+      const resp = await fetch("https://graph.microsoft.com/v1.0/me", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      return data.userPrincipalName || data.mail;
+    } catch (err) {
+      console.error("Erreur récupération mail:", err);
+      return null;
+    }
+  }
+
+  return { connecter, deconnecter, estConnecte, obtenirAccessToken, initSilencieux, obtenirMailUtilisateur };
 })();
 
 window.GraphAuth = GraphAuth;
+
+// Force update: 2026-08-09 v5 - obtenirMailUtilisateur

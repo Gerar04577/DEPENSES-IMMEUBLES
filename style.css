@@ -76,6 +76,7 @@ body{
 
 .conn-status{ display:flex; align-items:center; gap:8px; }
 .conn-label{ font-size: 11px; color:#AEB9CC; font-family: var(--font-mono); }
+.user-email{ font-size: 11px; color:#AEB9CC; font-family: var(--font-mono); display: block; margin: 4px 0; }
 
 .tabs{
   display:flex;
@@ -360,3 +361,5 @@ body{
 }
 
 /* Force update: 2026-08-09 v4 - fix save-reminder width */
+
+/* Force update: 2026-08-09 v5 - user-email css */
