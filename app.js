@@ -3,7 +3,7 @@
 // Application indépendante (pas de lien avec VeroS / Gestion Loyers)
 // ==========================================================
 
-const APP_VERSION = "v8";
+const APP_VERSION = "v9";
 document.getElementById("versionLabel").textContent = APP_VERSION;
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -545,4 +545,4 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // Force update: 2026-08-09 v3 release
 
-// Force update: 2026-08-09 v8 - reconnect sans reload déconnexion et debug mail + disconnect
+// Force update: 2026-08-09 v9 - JWT mail decode sans reload déconnexion et debug mail + disconnect

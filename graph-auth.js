@@ -168,32 +168,54 @@ const GraphAuth = (() => {
     sessionStorage.removeItem(SS_ACCESS_TOKEN);
     sessionStorage.removeItem(SS_ACCESS_EXP);
     localStorage.removeItem(LS_REFRESH_TOKEN);
+    localStorage.removeItem("depenses-immeubles-user-email");
+  }
+
+  function decoderJWT(token) {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const decoded = JSON.parse(atob(parts[1]));
+      return decoded;
+    } catch (err) {
+      console.error("Erreur décoding JWT:", err);
+      return null;
+    }
   }
 
   async function obtenirMailUtilisateur() {
     const token = await obtenirAccessToken();
-    console.log("obtenirMailUtilisateur - token:", token ? "présent" : "absent");
-    if (!token) {
-      console.log("pas de token pour récupérer le mail");
-      return null;
+    if (!token) return null;
+    
+    // Essayer décoder le JWT d'abord (le plus fiable)
+    const decoded = decoderJWT(token);
+    if (decoded) {
+      const mail = decoded.preferred_username || decoded.email || decoded.upn;
+      if (mail) {
+        console.log("Mail du JWT:", mail);
+        localStorage.setItem("depenses-immeubles-user-email", mail);
+        return mail;
+      }
     }
+    
+    // Fallback: essayer l'appel Graph (au cas où)
     try {
       const resp = await fetch("https://graph.microsoft.com/v1.0/me", {
         headers: { "Authorization": `Bearer ${token}` }
       });
-      console.log("Microsoft Graph /me response:", resp.status);
-      if (!resp.ok) {
-        console.log("erreur Microsoft Graph:", resp.status, resp.statusText);
-        return null;
+      if (resp.ok) {
+        const data = await resp.json();
+        const mail = data.userPrincipalName || data.mail;
+        if (mail) {
+          localStorage.setItem("depenses-immeubles-user-email", mail);
+          return mail;
+        }
       }
-      const data = await resp.json();
-      const mail = data.userPrincipalName || data.mail;
-      console.log("Mail récupéré:", mail);
-      return mail;
     } catch (err) {
-      console.error("Erreur récupération mail:", err);
-      return null;
+      console.error("Erreur Graph API:", err);
     }
+    
+    return null;
   }
 
   return { connecter, deconnecter, estConnecte, obtenirAccessToken, initSilencieux, obtenirMailUtilisateur };
@@ -203,6 +225,6 @@ window.GraphAuth = GraphAuth;
 
 // Force update: 2026-08-09 v7 - hard reset logging pour mail
 
-// v8: reconnect mechanism without reload
+// v9: JWT mail decode mechanism without reload
 
-window.DEPENSES_V8_RECONNECT = true; // v8 marker for disconnect/reconnect flow
+window.DEPENSES_V8_RECONNECT = true; // v9 JWT marker for disconnect/reconnect flow
