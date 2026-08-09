@@ -3,7 +3,7 @@
 // Application indépendante (pas de lien avec VeroS / Gestion Loyers)
 // ==========================================================
 
-const APP_VERSION = "v3";
+const APP_VERSION = "v4";
 document.getElementById("versionLabel").textContent = APP_VERSION;
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -509,3 +509,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 });
+
+// Force update: 2026-08-09 v3 release

@@ -337,9 +337,13 @@ body{
 
 .save-reminder{
   position: sticky; top: 0; z-index: 30;
+  left: 0; right: 0; width: 100%;
   background: var(--warn); color:#fff;
   font-size: 14px; padding: 12px 14px;
   animation: slideDown .3s ease;
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 0; box-sizing: border-box;
+}
 }
 @keyframes slideDown{ from{ transform: translateY(-100%); opacity:0; } to{ transform: translateY(0); opacity:1; } }
 .save-reminder-content{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
@@ -354,3 +358,5 @@ body{
   text-align:center; font-family: var(--font-mono); font-size: 11px;
   color: var(--ink-soft); padding: 18px 0 6px;
 }
+
+/* Force update: 2026-08-09 v4 - fix save-reminder width */
