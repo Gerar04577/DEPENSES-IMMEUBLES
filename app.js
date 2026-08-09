@@ -3,7 +3,7 @@
 // Application indépendante (pas de lien avec VeroS / Gestion Loyers)
 // ==========================================================
 
-const APP_VERSION = "v9";
+const APP_VERSION = "v10";
 document.getElementById("versionLabel").textContent = APP_VERSION;
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -173,9 +173,21 @@ async function sauvegarderDonnees() {
       localStorage.setItem("depenses-immeubles-last-save", ts);
       el("saveBanner").style.display = "none";
       localStorage.removeItem("depenses-immeubles-tentative-envoi");
+      showToast("✓ Sauvegardé sur OneDrive");
+      
+      // Masquer temporairement la bannière après enregistrement
+      if (el("saveReminder").style.display === "flex") {
+        el("saveReminder").style.display = "none";
+        setTimeout(() => {
+          if (el("saveReminder").style.display === "none") {
+            el("saveReminder").style.display = "flex";
+          }
+        }, 5000);
+      }
     } catch (err) {
       console.error("Échec sauvegarde OneDrive:", err);
       el("saveBanner").style.display = "block";
+      showToast("⚠️ Erreur sauvegarde OneDrive");
     }
   } else {
     localStorage.setItem("depenses-immeubles-last-save", ts);
@@ -370,6 +382,12 @@ function fermerModal() {
 
 async function soumettreFormulaire(e) {
   e.preventDefault();
+  e.stopPropagation();
+  
+  // Désactiver le bouton pour éviter les doublons
+  const btnSubmit = expenseForm.querySelector("button[type='submit']");
+  if (btnSubmit) btnSubmit.disabled = true;
+  
   const id = el("fId").value || ("dep_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7));
 
   const depenseExistante = depenses.find(d => d.id === id);
@@ -408,10 +426,16 @@ async function soumettreFormulaire(e) {
     depenses.push(depense);
   }
 
-  await sauvegarderDonnees();
+  // Fermer la modale IMMÉDIATEMENT
   fermerModal();
+  showToast("✓ Dépense enregistrée");
+  
+  // Sauvegarder les données
+  await sauvegarderDonnees();
   render();
-  showToast("Dépense enregistrée");
+  
+  // Réactiver le bouton
+  if (btnSubmit) btnSubmit.disabled = false;
 }
 
 function supprimerDepenseCourante() {
@@ -545,4 +569,4 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // Force update: 2026-08-09 v3 release
 
-// Force update: 2026-08-09 v9 - JWT mail decode sans reload déconnexion et debug mail + disconnect
+// Force update: 2026-08-09 v10 - fix duplication et feedback mail decode sans reload déconnexion et debug mail + disconnect
