@@ -3,7 +3,7 @@
 // Application indépendante (pas de lien avec VeroS / Gestion Loyers)
 // ==========================================================
 
-const APP_VERSION = "v1";
+const APP_VERSION = "v3";
 document.getElementById("versionLabel").textContent = APP_VERSION;
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
