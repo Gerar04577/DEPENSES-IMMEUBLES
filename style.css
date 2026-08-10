@@ -367,3 +367,99 @@ body{
 /* v9: improved disconnect flow */
 
 :root { --v8-marker: 'v8-disconnect-flow'; }
+
+/* ============= v11: Warranty Fields & Consultation ============= */
+
+.warranty-toggle{
+  padding: 8px 0;
+}
+
+.checkbox-label{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.warranty-checkbox{
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+.warranty-fields{
+  border-left: 3px solid var(--copper);
+}
+
+#tabGaranties{
+  border: 2px solid #ffd700;
+}
+
+#tabGaranties.active{
+  background: linear-gradient(135deg, #ffed4e, #ffd700) !important;
+  color: #333;
+}
+
+.warranty-list{
+  margin: 16px 0;
+}
+
+.warranty-list h3{
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.warranty-item{
+  background: var(--surface);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius-m);
+  padding: 12px;
+  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  font-size: 13px;
+  align-items: start;
+}
+
+.warranty-item-label{
+  font-weight: 600;
+  color: var(--ink-soft);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.warranty-item-value{
+  color: var(--ink);
+}
+
+.warranty-status{
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  text-align: center;
+}
+
+.warranty-status.actif{
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.warranty-status.expire-bientot{
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+.warranty-status.expire{
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+/* v11: warranty management + consultation */

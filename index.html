@@ -9,7 +9,7 @@
 <title>Dépenses Immeubles</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 
@@ -32,6 +32,7 @@
   <nav class="tabs" id="buildingTabs" aria-label="Immeubles">
     <button class="tab active" data-immeuble="tous">Tous</button>
     <!-- généré en JS -->
+    <button class="tab" id="tabGaranties" data-view="garanties" style="margin-left: auto; background: linear-gradient(135deg, #ffd700, #ffed4e); color: #333; font-weight: bold;">📋 Garanties</button>
   </nav>
 </header>
 
@@ -65,6 +66,36 @@
   <section class="panel" id="expenseListPanel">
     <div id="expenseList" class="expense-list">
       <p class="empty-state">Aucune dépense enregistrée pour l'instant. Ajoute la première avec le bouton ci-dessus.</p>
+    </div>
+  </section>
+
+  <!-- Page Consultation Garanties (hidden par défaut) -->
+  <section class="panel" id="warrantyPagePanel" style="display:none;">
+    <h2 style="margin: 0 0 16px 0;">📋 Consultation des Garanties</h2>
+    
+    <div class="filters" style="margin-bottom: 16px;">
+      <select id="filterFournisseur" class="input">
+        <option value="">Tous les fournisseurs</option>
+      </select>
+      <select id="filterStudio" class="input">
+        <option value="">Tous les studios/immeubles</option>
+      </select>
+      <select id="filterStatusGarantie" class="input">
+        <option value="">Tous statuts</option>
+        <option value="actif">✓ Actif</option>
+        <option value="expire-bientot">⚠️ Expire bientôt</option>
+        <option value="expire">❌ Expiré</option>
+      </select>
+    </div>
+
+    <div id="warrantyActiveList" class="warranty-list">
+      <h3>✓ Garanties Actives</h3>
+      <div id="warrantyListActive"></div>
+    </div>
+
+    <div id="warrantyExpiredList" class="warranty-list" style="margin-top: 24px; opacity: 0.7;">
+      <h3>❌ Garanties Expirées</h3>
+      <div id="warrantyListExpired"></div>
     </div>
   </section>
 
@@ -133,6 +164,58 @@
         <p class="field-hint">Enregistré directement dans OneDrive, dossier DEPENSES-IMMEUBLES/justificatifs.</p>
       </div>
 
+      <!-- NOUVEAU: Bloc Garantie -->
+      <div class="field-row warranty-toggle">
+        <label class="checkbox-label">
+          <input type="checkbox" id="fGarantie" class="warranty-checkbox">
+          ☑ Matériel avec garantie
+        </label>
+      </div>
+
+      <div id="warrantyFields" class="warranty-fields" style="display:none; padding: 12px; background: #f9f3e6; border-radius: 4px; margin-top: 8px;">
+        <div class="field-row">
+          <label for="fFactureGarantie">Facture (pour Scan Facture)</label>
+          <input type="file" id="fFactureGarantie" accept="application/pdf,image/*" class="input">
+          <p class="field-hint">Upload PDF/photo — on extrait la date automatiquement.</p>
+        </div>
+
+        <div class="field-row two-col">
+          <div>
+            <label for="fFournisseurGarantie">Fournisseur</label>
+            <select id="fFournisseurGarantie" class="input">
+              <option value="">-- Sélectionner --</option>
+              <option value="ELDI">ELDI</option>
+              <option value="ACTION">ACTION</option>
+              <option value="BRICO PLAN IT">BRICO PLAN IT</option>
+              <option value="LIDL">LIDL</option>
+              <option value="MEDIAMARKT">MEDIAMARKT</option>
+              <option value="EXTRA">EXTRA</option>
+              <option value="KRËFE">KRËFE</option>
+              <option value="Leroy Merlin">Leroy Merlin</option>
+              <option value="Brico Dépôt">Brico Dépôt</option>
+              <option value="custom">➕ Ajouter nouveau...</option>
+            </select>
+          </div>
+          <div id="newFournisseurField" style="display:none;">
+            <label for="fFournisseurNouveau">Nouveau fournisseur</label>
+            <input type="text" id="fFournisseurNouveau" class="input" placeholder="Nom du fournisseur">
+          </div>
+        </div>
+
+        <div class="field-row two-col">
+          <div>
+            <label for="fDateDebutGarantie">Date de début garantie</label>
+            <input type="date" id="fDateDebutGarantie" class="input">
+            <p class="field-hint">Auto-rempli depuis la facture si possible.</p>
+          </div>
+          <div>
+            <label for="fDateFinGarantie">Date de fin garantie</label>
+            <input type="date" id="fDateFinGarantie" class="input" readonly>
+            <p class="field-hint">Calculé auto: début + 2 ans</p>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-actions">
         <button type="button" id="btnSupprimerDepense" class="btn btn-danger" style="display:none;">Supprimer</button>
         <div class="modal-actions-right">
@@ -158,12 +241,12 @@
 </div>
 
 <footer class="app-footer">
-  <span id="versionLabel">v10</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
+  <span id="versionLabel">v11</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
 </footer>
 
-<script src="graph-auth.js?v=10"></script>
-<script src="graph-storage.js?v=10"></script>
-<script src="app.js?v=10"></script>
+<script src="graph-auth.js?v=11"></script>
+<script src="graph-storage.js?v=11"></script>
+<script src="app.js?v=11"></script>
 <!-- Force update: 2026-08-09 v3 release with save button & reminder banner -->
 </body>
 </html>

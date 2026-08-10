@@ -1,13 +1,12 @@
 // ==========================================================
-// Dépenses Immeubles — app.js
-// Application indépendante (pas de lien avec VeroS / Gestion Loyers)
+// Dépenses Immeubles — app.js v11
+// Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v10";
-document.getElementById("versionLabel").textContent = APP_VERSION;
+const APP_VERSION = "v11";
+const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
-// (repris de l'arborescence réelle OneDrive "Immobilier 2025-2026")
 const IMMEUBLES = [
   { id: "biche", nom: "Biche", unites: [
     "STUDIO 1","STUDIO 2","STUDIO 3","STUDIO 4","STUDIO 5","STUDIO 6",
@@ -32,12 +31,19 @@ const NATURES = [
   "Nettoyage","Serrurerie","Toiture / étanchéité","Électroménager","Autre"
 ];
 
+const FOURNISSEURS_DEFAULTS = [
+  "ELDI","ACTION","BRICO PLAN IT","LIDL","MEDIAMARKT","EXTRA","KRËFE",
+  "Leroy Merlin","Brico Dépôt"
+];
+
 // ---- État en mémoire ----
-let depenses = [];      // tableau des dépenses
+let depenses = [];
 let filtreImmeuble = "tous";
+let currentView = "depenses"; // 'depenses' ou 'garanties'
 let onedriveConnecte = false;
-let timerBanniere = null;        // timer pour bannière d'avertissement toutes les 10 min
-let reminderVisible = false;    // état de la bannière
+let timerBanniere = null;
+let reminderVisible = false;
+let fournisseursPersos = []; // fournisseurs custom (localStorage)
 
 // ---- Éléments DOM ----
 const el = (id) => document.getElementById(id);
@@ -49,14 +55,26 @@ const modalBackdrop = el("modalBackdrop");
 const expenseForm = el("expenseForm");
 const toastEl = el("toast");
 
+document.getElementById("versionLabel").textContent = APP_VERSION;
+
 // ==========================================================
 // Initialisation
 // ==========================================================
 function init() {
+  chargerFournisseursPersos();
   renderBuildingTabs();
   renderSelectOptions();
   chargerDonnees();
   attachEvents();
+}
+
+function chargerFournisseursPersos() {
+  const stored = localStorage.getItem("depenses-immeubles-fournisseurs");
+  fournisseursPersos = stored ? JSON.parse(stored) : [];
+}
+
+function sauvegarderFournisseursPersos() {
+  localStorage.setItem("depenses-immeubles-fournisseurs", JSON.stringify(fournisseursPersos));
 }
 
 function renderBuildingTabs() {
@@ -67,14 +85,38 @@ function renderBuildingTabs() {
     btn.textContent = imm.nom;
     buildingTabs.appendChild(btn);
   });
+  
   buildingTabs.addEventListener("click", (e) => {
     const btn = e.target.closest(".tab");
     if (!btn) return;
-    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-    btn.classList.add("active");
-    filtreImmeuble = btn.dataset.immeuble;
-    render();
+    if (btn.dataset.view === "garanties") {
+      switchView("garanties");
+    } else {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      btn.classList.add("active");
+      filtreImmeuble = btn.dataset.immeuble;
+      switchView("depenses");
+    }
   });
+}
+
+function switchView(view) {
+  currentView = view;
+  el("expenseListPanel").style.display = view === "depenses" ? "block" : "none";
+  el("warrantyPagePanel").style.display = view === "garanties" ? "block" : "none";
+  el("totalsPanel").style.display = view === "depenses" ? "block" : "none";
+  el("actionsPanel").style.display = view === "depenses" ? "block" : "none";
+  
+  document.querySelectorAll(".tab[data-view]").forEach(t => t.classList.remove("active"));
+  if (view === "garanties") {
+    el("tabGaranties").classList.add("active");
+    renderWarrantyConsultation();
+  } else {
+    document.querySelectorAll(".tab:not([data-view])").forEach(t => {
+      if (t.dataset.immeuble === filtreImmeuble) t.classList.add("active");
+    });
+    render();
+  }
 }
 
 function renderSelectOptions() {
@@ -95,6 +137,9 @@ function renderSelectOptions() {
     opt.textContent = n;
     selNature.appendChild(opt);
   });
+  
+  // Remplir dropdown fournisseurs
+  renderFournisseurOptions();
 }
 
 function renderUniteOptions() {
@@ -110,15 +155,34 @@ function renderUniteOptions() {
   });
 }
 
+function renderFournisseurOptions() {
+  const sel = el("fFournisseurGarantie");
+  if (!sel) return;
+  
+  sel.innerHTML = '<option value="">-- Sélectionner --</option>';
+  
+  const allFournisseurs = [...FOURNISSEURS_DEFAULTS, ...fournisseursPersos];
+  allFournisseurs.forEach(f => {
+    const opt = document.createElement("option");
+    opt.value = f;
+    opt.textContent = f;
+    sel.appendChild(opt);
+  });
+  
+  const customOpt = document.createElement("option");
+  customOpt.value = "custom";
+  customOpt.textContent = "➕ Ajouter nouveau...";
+  sel.appendChild(customOpt);
+}
+
 // ==========================================================
-// Bannière d'avertissement "N'oubliez pas d'enregistrer"
+// Bannière d'avertissement
 // ==========================================================
 function afficherBanniere() {
   const banner = el("saveReminder");
   if (!banner) return;
   banner.style.display = "flex";
   reminderVisible = true;
-  // réaffichage auto toutes les 10 min
   clearTimeout(timerBanniere);
   timerBanniere = setTimeout(afficherBanniere, 10 * 60 * 1000);
 }
@@ -128,20 +192,17 @@ function fermerBanniere() {
   if (!banner) return;
   banner.style.display = "none";
   reminderVisible = false;
-  // timer ne s'arrête pas — la bannière réapparaîtra dans 10 min
 }
 
 // ==========================================================
 // Chargement / sauvegarde des données
 // ==========================================================
 async function chargerDonnees() {
-  // afficher l'horodatage persistant si présent
   const lastSave = localStorage.getItem("depenses-immeubles-last-save");
   if (lastSave) {
     el("lastSaveLabel").textContent = "OneDrive confirmé " + lastSave;
   }
 
-  // 1. essai OneDrive si connecté
   if (window.GraphAuth && GraphAuth.estConnecte()) {
     try {
       const data = await GraphStorage.chargerDepenses();
@@ -154,7 +215,6 @@ async function chargerDonnees() {
       console.error("Échec lecture OneDrive, repli local:", err);
     }
   }
-  // 2. repli localStorage
   const brut = localStorage.getItem("depenses-immeubles-data");
   depenses = brut ? JSON.parse(brut) : [];
   render();
@@ -175,7 +235,6 @@ async function sauvegarderDonnees() {
       localStorage.removeItem("depenses-immeubles-tentative-envoi");
       showToast("✓ Sauvegardé sur OneDrive");
       
-      // Masquer temporairement la bannière après enregistrement
       if (el("saveReminder").style.display === "flex") {
         el("saveReminder").style.display = "none";
         setTimeout(() => {
@@ -205,7 +264,6 @@ function majStatutConnexion(connecte) {
   el("userEmail").style.display = connecte ? "block" : "none";
   el("btnDisconnect").style.display = connecte ? "inline" : "none";
   
-  // Récupérer et afficher le mail
   if (connecte && window.GraphAuth) {
     el("userEmail").textContent = "Chargement...";
     GraphAuth.obtenirMailUtilisateur().then(mail => {
@@ -235,116 +293,254 @@ function depensesFiltreesImmeuble() {
 }
 
 function renderTotaux() {
-  totalsRow.innerHTML = "";
+  const deps = depensesFiltreesImmeuble();
+  const totalPayé = deps.filter(d => d.statut === "payé").reduce((s, d) => s + d.montant, 0);
+  const totalNonPayé = deps.filter(d => d.statut === "à payer").reduce((s, d) => s + d.montant, 0);
+  const totalGeneral = deps.reduce((s, d) => s + d.montant, 0);
 
-  IMMEUBLES.forEach(imm => {
-    const liste = depenses.filter(d => d.immeubleId === imm.id);
-    const total = liste.reduce((s, d) => s + Number(d.montant || 0), 0);
-    if (filtreImmeuble !== "tous" && filtreImmeuble !== imm.id) return;
-    const card = document.createElement("div");
-    card.className = "total-card";
-    card.innerHTML = `
-      <span class="label">${imm.nom}</span>
-      <span class="amount">${formatMontant(total)}</span>
-      <span class="count">${liste.length} dépense${liste.length > 1 ? "s" : ""}</span>
-    `;
-    totalsRow.appendChild(card);
-  });
-
-  const totalGeneral = depenses.reduce((s, d) => s + Number(d.montant || 0), 0);
-  const grand = document.createElement("div");
-  grand.className = "total-card grand";
-  grand.innerHTML = `
-    <span class="label">Total général</span>
-    <span class="amount">${formatMontant(totalGeneral)}</span>
-    <span class="count">${depenses.length} dépense${depenses.length > 1 ? "s" : ""}</span>
+  totalsRow.innerHTML = `
+    <div class="total-box">
+      <span class="total-label">Payé</span>
+      <span class="total-amount">${totalPayé.toFixed(2)}€</span>
+    </div>
+    <div class="total-box">
+      <span class="total-label">À payer</span>
+      <span class="total-amount">${totalNonPayé.toFixed(2)}€</span>
+    </div>
+    <div class="total-box total-box-highlight">
+      <span class="total-label">TOTAL</span>
+      <span class="total-amount">${totalGeneral.toFixed(2)}€</span>
+    </div>
   `;
-  totalsRow.appendChild(grand);
 }
 
 function renderListe() {
-  let liste = depensesFiltreesImmeuble();
+  const searchTxt = el("filterSearch").value.toLowerCase();
+  const filtreStatut = el("filterStatut").value;
+  const triOption = el("filterTri").value;
 
-  const recherche = el("filterSearch").value.trim().toLowerCase();
-  if (recherche) {
-    liste = liste.filter(d =>
-      (d.unite || "").toLowerCase().includes(recherche) ||
-      (d.nature || "").toLowerCase().includes(recherche) ||
-      (d.fournisseur || "").toLowerCase().includes(recherche) ||
-      (d.description || "").toLowerCase().includes(recherche)
+  let deps = depensesFiltreesImmeuble();
+
+  if (searchTxt) {
+    deps = deps.filter(d =>
+      d.unite.toLowerCase().includes(searchTxt) ||
+      d.nature.toLowerCase().includes(searchTxt) ||
+      (d.fournisseur && d.fournisseur.toLowerCase().includes(searchTxt)) ||
+      (d.description && d.description.toLowerCase().includes(searchTxt))
     );
   }
 
-  const statut = el("filterStatut").value;
-  if (statut !== "tous") liste = liste.filter(d => d.statut === statut);
+  if (filtreStatut !== "tous") {
+    deps = deps.filter(d => d.statut === filtreStatut);
+  }
 
-  const tri = el("filterTri").value;
-  liste = [...liste].sort((a, b) => {
-    if (tri === "date-desc") return b.date.localeCompare(a.date);
-    if (tri === "date-asc") return a.date.localeCompare(b.date);
-    if (tri === "montant-desc") return b.montant - a.montant;
-    if (tri === "montant-asc") return a.montant - b.montant;
-    return 0;
-  });
+  // Tri
+  if (triOption === "date-asc") {
+    deps.sort((a, b) => new Date(a.date) - new Date(b.date));
+  } else if (triOption === "date-desc") {
+    deps.sort((a, b) => new Date(b.date) - new Date(a.date));
+  } else if (triOption === "montant-asc") {
+    deps.sort((a, b) => a.montant - b.montant);
+  } else if (triOption === "montant-desc") {
+    deps.sort((a, b) => b.montant - a.montant);
+  }
 
   expenseList.innerHTML = "";
-  if (liste.length === 0) {
-    expenseList.innerHTML = `<p class="empty-state">Aucune dépense ne correspond.</p>`;
+  if (deps.length === 0) {
+    expenseList.innerHTML = '<p class="empty-state">Aucune dépense trouvée.</p>';
     return;
   }
 
-  liste.forEach(d => {
-    const imm = IMMEUBLES.find(i => i.id === d.immeubleId);
-    const card = document.createElement("div");
-    card.className = "expense-card" + (d.statut === "à payer" ? " statut-a-payer" : "");
-    card.dataset.id = d.id;
-    card.innerHTML = `
-      <span class="ref">#${d.id.slice(-5).toUpperCase()}</span>
-      <div class="main">
-        <div class="top-line">
-          <span class="nature">${escapeHtml(d.nature)}</span>
-          <span class="unite">${imm ? imm.nom : "?"} · ${escapeHtml(d.unite)}</span>
-        </div>
-        ${d.description ? `<div class="desc">${escapeHtml(d.description)}</div>` : ""}
-        <div class="meta-line">
-          <span>${formatDate(d.date)}</span>
-          ${d.fournisseur ? `<span>${escapeHtml(d.fournisseur)}</span>` : ""}
-        </div>
-        ${d.justificatif ? `<div class="badge-justif">📎 ${escapeHtml(d.justificatif.nom)}</div>` : ""}
+  deps.forEach(dep => {
+    const itemDiv = document.createElement("div");
+    itemDiv.className = "expense-item";
+    const dateObj = new Date(dep.date + "T00:00:00");
+    const dateFormatted = dateObj.toLocaleDateString("fr-BE");
+    itemDiv.innerHTML = `
+      <div class="expense-header">
+        <span class="expense-unite">${escapeHtml(dep.unite)}</span>
+        <span class="expense-date">${dateFormatted}</span>
+        <span class="expense-montant">${dep.montant.toFixed(2)}€</span>
+        <span class="expense-statut ${dep.statut === "payé" ? "statut-paye" : "statut-impaye"}">
+          ${dep.statut === "payé" ? "✓ Payé" : "À payer"}
+        </span>
       </div>
-      <div class="amount-col">
-        <div class="amount">${formatMontant(d.montant)}</div>
-        <span class="badge-statut ${d.statut === 'payé' ? 'paye' : 'a-payer'}">${d.statut}</span>
+      <div class="expense-details">
+        <span class="detail-nature"><strong>Nature:</strong> ${escapeHtml(dep.nature)}</span>
+        ${dep.fournisseur ? `<span class="detail-fournisseur"><strong>Fournisseur:</strong> ${escapeHtml(dep.fournisseur)}</span>` : ""}
+        ${dep.description ? `<span class="detail-desc"><strong>Description:</strong> ${escapeHtml(dep.description)}</span>` : ""}
+        ${dep.garantie ? `<span class="detail-warranty">☑ Avec garantie</span>` : ""}
+        ${dep.justificatif ? `<span class="detail-justif"><a href="${dep.justificatif.webUrl}" target="_blank" rel="noopener">📎 ${escapeHtml(dep.justificatif.nom)}</a></span>` : ""}
       </div>
     `;
-    card.addEventListener("click", () => ouvrirModal(d));
-    expenseList.appendChild(card);
+    itemDiv.addEventListener("click", () => ouvrirModal(dep));
+    expenseList.appendChild(itemDiv);
   });
 }
 
-function formatMontant(v) {
-  return Number(v || 0).toLocaleString("fr-BE", { style: "currency", currency: "EUR" });
+// ==========================================================
+// Consultation des Garanties
+// ==========================================================
+function renderWarrantyConsultation() {
+  const garanties = depenses.filter(d => d.garantie);
+  const actifs = [];
+  const expiries = [];
+  
+  garanties.forEach(g => {
+    const status = calculerStatusGarantie(g);
+    if (status === "expire") {
+      expiries.push({ ...g, status });
+    } else {
+      actifs.push({ ...g, status });
+    }
+  });
+
+  // Remplir les dropdowns de filtres
+  remplirFiltresGarantie(garanties);
+
+  // Appliquer les filtres
+  const filterFournisseur = el("filterFournisseur").value;
+  const filterStudio = el("filterStudio").value;
+  const filterStatusGarantie = el("filterStatusGarantie").value;
+
+  let actifsFilters = actifs;
+  let expiriesFilters = expiries;
+
+  if (filterFournisseur) {
+    actifsFilters = actifsFilters.filter(g => g.fournisseurGarantie === filterFournisseur);
+    expiriesFilters = expiriesFilters.filter(g => g.fournisseurGarantie === filterFournisseur);
+  }
+  if (filterStudio) {
+    actifsFilters = actifsFilters.filter(g => g.unite === filterStudio);
+    expiriesFilters = expiriesFilters.filter(g => g.unite === filterStudio);
+  }
+  if (filterStatusGarantie === "actif") {
+    expiriesFilters = [];
+  } else if (filterStatusGarantie === "expire") {
+    actifsFilters = [];
+  }
+
+  renderWarrantyList(actifsFilters, "actif");
+  renderWarrantyList(expiriesFilters, "expire");
 }
-function formatDate(iso) {
-  if (!iso) return "";
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+function remplirFiltresGarantie(garanties) {
+  const fournisseurs = new Set(garanties.map(g => g.fournisseurGarantie).filter(Boolean));
+  const studios = new Set(garanties.map(g => g.unite).filter(Boolean));
+
+  const selFournisseur = el("filterFournisseur");
+  const selStudio = el("filterStudio");
+
+  selFournisseur.innerHTML = '<option value="">Tous les fournisseurs</option>';
+  Array.from(fournisseurs).sort().forEach(f => {
+    const opt = document.createElement("option");
+    opt.value = f;
+    opt.textContent = f;
+    selFournisseur.appendChild(opt);
+  });
+
+  selStudio.innerHTML = '<option value="">Tous les studios/immeubles</option>';
+  Array.from(studios).sort().forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    selStudio.appendChild(opt);
+  });
 }
-function escapeHtml(s) {
-  return String(s || "").replace(/[&<>"']/g, c => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  }[c]));
+
+function calculerStatusGarantie(g) {
+  if (!g.dateFinGarantie) return "actif";
+  const today = new Date();
+  const dateEnd = new Date(g.dateFinGarantie + "T23:59:59");
+  const daysLeft = Math.ceil((dateEnd - today) / (1000 * 60 * 60 * 24));
+  if (daysLeft < 0) return "expire";
+  if (daysLeft < 30) return "expire-bientot";
+  return "actif";
+}
+
+function renderWarrantyList(garanties, typeList) {
+  let container, titleEl;
+  
+  if (typeList === "actif") {
+    container = el("warrantyListActive");
+    titleEl = el("warrantyActiveList");
+  } else {
+    container = el("warrantyListExpired");
+    titleEl = el("warrantyExpiredList");
+  }
+
+  if (!container) return;
+
+  if (garanties.length === 0) {
+    container.innerHTML = '<p class="empty-state">Aucune garantie.</p>';
+    titleEl.style.display = "none";
+    return;
+  }
+
+  titleEl.style.display = "block";
+  container.innerHTML = "";
+
+  garanties.forEach(g => {
+    const status = calculerStatusGarantie(g);
+    const statusLabel = {
+      "actif": "✓ Actif",
+      "expire-bientot": "⚠️ Expire bientôt",
+      "expire": "❌ Expiré"
+    }[status];
+
+    const itemDiv = document.createElement("div");
+    itemDiv.className = "warranty-item";
+    itemDiv.innerHTML = `
+      <div class="warranty-item-field">
+        <div class="warranty-item-label">Fournisseur</div>
+        <div class="warranty-item-value">${escapeHtml(g.fournisseurGarantie || "-")}</div>
+      </div>
+      <div class="warranty-item-field">
+        <div class="warranty-item-label">Studio</div>
+        <div class="warranty-item-value">${escapeHtml(g.unite)}</div>
+      </div>
+      <div class="warranty-item-field">
+        <div class="warranty-item-label">Matériel</div>
+        <div class="warranty-item-value">${escapeHtml(g.nature)}</div>
+      </div>
+      <div class="warranty-item-field">
+        <div class="warranty-item-label">Montant</div>
+        <div class="warranty-item-value">${g.montant.toFixed(2)}€</div>
+      </div>
+      <div class="warranty-item-field">
+        <div class="warranty-item-label">Début</div>
+        <div class="warranty-item-value">${g.dateDebutGarantie || "-"}</div>
+      </div>
+      <div class="warranty-item-field">
+        <div class="warranty-item-label">Fin</div>
+        <div class="warranty-item-value">${g.dateFinGarantie || "-"}</div>
+      </div>
+      <div class="warranty-item-field">
+        <div class="warranty-item-label">Jours restants</div>
+        <div class="warranty-item-value">${status === "expire" ? "0" : Math.ceil((new Date(g.dateFinGarantie + "T23:59:59") - new Date()) / (1000 * 60 * 60 * 24))}</div>
+      </div>
+      <div class="warranty-item-field">
+        <div class="warranty-item-label">Statut</div>
+        <div class="warranty-status ${status}">${statusLabel}</div>
+      </div>
+    `;
+    container.appendChild(itemDiv);
+  });
 }
 
 // ==========================================================
 // Modal / formulaire
 // ==========================================================
-let justificatifChoisi = null; // File sélectionné en attente d'upload
+let justificatifChoisi = null;
+let factureGarantieChoisi = null;
 
 function ouvrirModal(depense) {
   expenseForm.reset();
   justificatifChoisi = null;
+  factureGarantieChoisi = null;
   el("justificatifCourant").innerHTML = "";
+  el("warrantyFields").style.display = "none";
+  el("newFournisseurField").style.display = "none";
 
   if (depense) {
     el("modalTitle").textContent = "Modifier la dépense";
@@ -359,14 +555,25 @@ function ouvrirModal(depense) {
     el("fFournisseur").value = depense.fournisseur || "";
     el("fDescription").value = depense.description || "";
     el("btnSupprimerDepense").style.display = "inline-block";
+    
     if (depense.justificatif) {
       el("justificatifCourant").innerHTML =
         `Actuel : <a href="${depense.justificatif.webUrl}" target="_blank" rel="noopener">${escapeHtml(depense.justificatif.nom)}</a>`;
+    }
+
+    // Remplir les champs de garantie
+    if (depense.garantie) {
+      el("fGarantie").checked = true;
+      el("warrantyFields").style.display = "block";
+      el("fFournisseurGarantie").value = depense.fournisseurGarantie || "";
+      el("fDateDebutGarantie").value = depense.dateDebutGarantie || "";
+      el("fDateFinGarantie").value = depense.dateFinGarantie || "";
     }
   } else {
     el("modalTitle").textContent = "Nouvelle dépense";
     el("fId").value = "";
     el("fDate").value = new Date().toISOString().slice(0, 10);
+    el("fGarantie").checked = false;
     renderUniteOptions();
     el("btnSupprimerDepense").style.display = "none";
   }
@@ -384,13 +591,22 @@ async function soumettreFormulaire(e) {
   e.preventDefault();
   e.stopPropagation();
   
-  // Désactiver le bouton pour éviter les doublons
   const btnSubmit = expenseForm.querySelector("button[type='submit']");
   if (btnSubmit) btnSubmit.disabled = true;
   
   const id = el("fId").value || ("dep_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7));
-
   const depenseExistante = depenses.find(d => d.id === id);
+
+  let fournisseurGarantieValue = el("fFournisseurGarantie").value;
+  if (fournisseurGarantieValue === "custom") {
+    fournisseurGarantieValue = (el("fFournisseurNouveau").value || "").trim();
+    if (fournisseurGarantieValue && !fournisseursPersos.includes(fournisseurGarantieValue)) {
+      fournisseursPersos.push(fournisseurGarantieValue);
+      sauvegarderFournisseursPersos();
+      renderFournisseurOptions();
+    }
+  }
+
   const depense = {
     id,
     immeubleId: el("fImmeuble").value,
@@ -401,16 +617,20 @@ async function soumettreFormulaire(e) {
     statut: el("fStatut").value,
     fournisseur: el("fFournisseur").value.trim(),
     description: el("fDescription").value.trim(),
-    justificatif: depenseExistante ? depenseExistante.justificatif : null
+    justificatif: depenseExistante ? depenseExistante.justificatif : null,
+    garantie: el("fGarantie").checked,
+    fournisseurGarantie: fournisseurGarantieValue || null,
+    dateDebutGarantie: el("fDateDebutGarantie").value || null,
+    dateFinGarantie: el("fDateFinGarantie").value || null
   };
 
-  // upload du justificatif si un nouveau fichier a été choisi
+  // Upload justificatif
   if (justificatifChoisi) {
     if (onedriveConnecte && window.GraphStorage) {
       showToast("Envoi du justificatif...");
       try {
         const meta = await GraphStorage.televerserJustificatif(justificatifChoisi, id);
-        depense.justificatif = meta; // {nom, webUrl, itemId}
+        depense.justificatif = meta;
       } catch (err) {
         console.error("Échec envoi justificatif:", err);
         showToast("Justificatif non envoyé (connecte-toi à OneDrive)");
@@ -420,22 +640,64 @@ async function soumettreFormulaire(e) {
     }
   }
 
+  // Scan Facture (garantie)
+  if (depense.garantie && factureGarantieChoisi) {
+    showToast("Lecture facture (Scan Facture)...");
+    try {
+      const dateExtracted = await callScanFactureWebhook(factureGarantieChoisi);
+      if (dateExtracted) {
+        depense.dateDebutGarantie = dateExtracted;
+        // Calculer fin garantie
+        const dateEnd = new Date(dateExtracted);
+        dateEnd.setFullYear(dateEnd.getFullYear() + 2);
+        depense.dateFinGarantie = dateEnd.toISOString().split("T")[0];
+        showToast("✓ Dates garantie calculées");
+      }
+    } catch (err) {
+      console.error("Échec Scan Facture:", err);
+      showToast("Scan Facture non disponible, remplis les dates manuellement");
+    }
+  }
+
   if (depenseExistante) {
     Object.assign(depenseExistante, depense);
   } else {
     depenses.push(depense);
   }
 
-  // Fermer la modale IMMÉDIATEMENT
   fermerModal();
   showToast("✓ Dépense enregistrée");
-  
-  // Sauvegarder les données
   await sauvegarderDonnees();
   render();
   
-  // Réactiver le bouton
   if (btnSubmit) btnSubmit.disabled = false;
+}
+
+async function callScanFactureWebhook(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const response = await fetch(SCAN_FACTURE_WEBHOOK, {
+      method: "POST",
+      body: formData
+    });
+    
+    if (!response.ok) throw new Error("Webhook error");
+    
+    const data = await response.json();
+    if (data.invoiceDate) {
+      // Convertir DD/MM/YYYY en YYYY-MM-DD
+      if (data.invoiceDate.includes("/")) {
+        const [day, month, year] = data.invoiceDate.split("/");
+        return `${year}-${month}-${day}`;
+      }
+      return data.invoiceDate;
+    }
+  } catch (err) {
+    console.error("Scan Facture webhook error:", err);
+    return null;
+  }
 }
 
 function supprimerDepenseCourante() {
@@ -461,6 +723,20 @@ function showToast(msg) {
 }
 
 // ==========================================================
+// Utilitaires
+// ==========================================================
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/[&<>"']/g, c => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+
+// ==========================================================
 // Événements
 // ==========================================================
 function attachEvents() {
@@ -475,9 +751,39 @@ function attachEvents() {
     justificatifChoisi = e.target.files[0] || null;
   });
 
+  // Gestion warranty toggle
+  el("fGarantie").addEventListener("change", (e) => {
+    el("warrantyFields").style.display = e.target.checked ? "block" : "none";
+  });
+
+  el("fFactureGarantie").addEventListener("change", (e) => {
+    factureGarantieChoisi = e.target.files[0] || null;
+  });
+
+  el("fFournisseurGarantie").addEventListener("change", (e) => {
+    if (e.target.value === "custom") {
+      el("newFournisseurField").style.display = "block";
+    } else {
+      el("newFournisseurField").style.display = "none";
+    }
+  });
+
+  el("fDateDebutGarantie").addEventListener("change", () => {
+    const dateDebut = el("fDateDebutGarantie").value;
+    if (dateDebut) {
+      const dateEnd = new Date(dateDebut + "T00:00:00");
+      dateEnd.setFullYear(dateEnd.getFullYear() + 2);
+      el("fDateFinGarantie").value = dateEnd.toISOString().split("T")[0];
+    }
+  });
+
   el("filterSearch").addEventListener("input", renderListe);
   el("filterStatut").addEventListener("change", renderListe);
   el("filterTri").addEventListener("change", renderListe);
+
+  el("filterFournisseur").addEventListener("change", renderWarrantyConsultation);
+  el("filterStudio").addEventListener("change", renderWarrantyConsultation);
+  el("filterStatusGarantie").addEventListener("change", renderWarrantyConsultation);
 
   el("btnConnect").addEventListener("click", async () => {
     if (window.GraphAuth) {
@@ -488,20 +794,16 @@ function attachEvents() {
   el("btnDisconnect").addEventListener("click", async () => {
     if (window.GraphAuth) {
       GraphAuth.deconnecter();
-      // Vider tous les caches locaux
       localStorage.clear();
       sessionStorage.clear();
-      // Forcer une nouvelle connexion Entra (pas reload)
       majStatutConnexion(false);
       showToast("Déconnecté. Reconnexion en cours...");
-      // Attendre 1 sec puis reconnecter
       setTimeout(() => {
         GraphAuth.connecter();
       }, 1000);
     }
   });
 
-  // Bouton d'enregistrement manuel
   el("btnEnregistrerMaintenant").addEventListener("click", async () => {
     const btn = el("btnEnregistrerMaintenant");
     btn.disabled = true;
@@ -516,7 +818,6 @@ function attachEvents() {
     btn.textContent = "💾 Enregistrer maintenant";
   });
 
-  // Fermeture de la bannière d'avertissement
   el("btnCloseSaveReminder").addEventListener("click", fermerBanniere);
 
   window.addEventListener("beforeunload", (e) => {
@@ -528,14 +829,13 @@ function attachEvents() {
 }
 
 // ==========================================================
-// Reprise après fermeture iOS pendant un envoi
+// Reprise après fermeture iOS
 // ==========================================================
 async function verifierReprise() {
   const tentative = localStorage.getItem("depenses-immeubles-tentative-envoi");
   if (tentative && window.GraphAuth && GraphAuth.estConnecte()) {
     try {
       const data = await GraphStorage.chargerDepenses();
-      // si la dernière sauvegarde locale correspond aux données OneDrive, on considère l'envoi réussi
       const local = localStorage.getItem("depenses-immeubles-data");
       if (local && JSON.stringify(data) === local) {
         localStorage.removeItem("depenses-immeubles-tentative-envoi");
@@ -553,8 +853,6 @@ async function verifierReprise() {
 // ==========================================================
 document.addEventListener("DOMContentLoaded", async () => {
   init();
-  
-  // Afficher la bannière d'avertissement au démarrage
   afficherBanniere();
   
   if (window.GraphAuth) {
@@ -567,6 +865,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// Force update: 2026-08-09 v3 release
-
-// Force update: 2026-08-09 v10 - fix duplication et feedback mail decode sans reload déconnexion et debug mail + disconnect
+// Force update: 2026-08-10 v11 - warranty management with Scan Facture integration
