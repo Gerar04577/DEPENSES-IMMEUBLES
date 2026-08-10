@@ -270,11 +270,11 @@ function majStatutConnexion(connecte) {
       if (mail) {
         el("userEmail").textContent = mail;
       } else {
-        el("userEmail").textContent = "(mail non disponible)";
+        el("userEmail").textContent = "";
       }
     }).catch(err => {
       console.error("Erreur mail:", err);
-      el("userEmail").textContent = "(erreur)";
+      el("userEmail").textContent = "";
     });
   }
 }
@@ -684,19 +684,76 @@ async function soumettreFormulaire(e) {
   if (btnSubmit) btnSubmit.disabled = false;
 }
 
-async function callScanFactureWebhook(file) {
-  const formData = new FormData();
-  formData.append("file", file);
+async function fileToBase64(file) {
+  if (file.type === "application/pdf") {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        const commaIdx = result.indexOf(",");
+        resolve({ base64: result.slice(commaIdx + 1), mimeType: "application/pdf" });
+      };
+      reader.onerror = () => reject(new Error("Impossible de lire le fichier PDF."));
+      reader.readAsDataURL(file);
+    });
+  }
 
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      const TAILLE_MAX_COTE = 1800;
+      if (width > TAILLE_MAX_COTE || height > TAILLE_MAX_COTE) {
+        if (width >= height) {
+          height = Math.round(height * (TAILLE_MAX_COTE / width));
+          width = TAILLE_MAX_COTE;
+        } else {
+          width = Math.round(width * (TAILLE_MAX_COTE / height));
+          height = TAILLE_MAX_COTE;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(objectUrl);
+
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+      const commaIdx = dataUrl.indexOf(",");
+      resolve({ base64: dataUrl.slice(commaIdx + 1), mimeType: "image/jpeg" });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Impossible de lire l'image."));
+    };
+    img.src = objectUrl;
+  });
+}
+
+async function callScanFactureWebhook(file) {
   try {
     console.log("Scan Facture: envoi facture...", file.name);
+    
+    // Convertir en Base64
+    const { base64: imageBase64, mimeType } = await fileToBase64(file);
+    
+    // Créer payload JSON (comme Scan Facture)
+    const payload = {
+      action: "analyser",
+      filename: mimeType === "application/pdf" ? "facture.pdf" : "facture.jpg",
+      mimeType,
+      imageBase64
+    };
     
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
     
     const response = await fetch(SCAN_FACTURE_WEBHOOK, {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
       signal: controller.signal
     });
     
@@ -711,29 +768,30 @@ async function callScanFactureWebhook(file) {
     const data = await response.json();
     console.log("Scan Facture: données reçues", data);
     
-    // Extraire et normaliser les données
+    // Extraire les bonnes clés (avec .value)
     const result = {};
     
     // Date facture
-    if (data.invoiceDate) {
-      let dateExtracted = data.invoiceDate;
-      if (dateExtracted.includes("/")) {
-        const [day, month, year] = dateExtracted.split("/");
-        dateExtracted = `${year}-${month}-${day}`;
+    if (data.date && data.date.value) {
+      let dateExtracted = data.date.value;
+      const m = String(dateExtracted).trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if (m) {
+        const [, jour, mois, annee] = m;
+        dateExtracted = `${annee}-${mois.padStart(2, "0")}-${jour.padStart(2, "0")}`;
       }
       result.invoiceDate = dateExtracted;
       console.log("✓ Date facture:", dateExtracted);
     }
     
     // Montant TTC
-    if (data.totalAmount) {
-      result.totalAmount = parseFloat(data.totalAmount);
+    if (data.ttc && data.ttc.value) {
+      result.totalAmount = parseFloat(data.ttc.value);
       console.log("✓ Montant TTC:", result.totalAmount);
     }
     
     // Fournisseur
-    if (data.supplierName) {
-      result.supplierName = data.supplierName;
+    if (data.fournisseur && data.fournisseur.value) {
+      result.supplierName = data.fournisseur.value;
       console.log("✓ Fournisseur:", result.supplierName);
     }
     
