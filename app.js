@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v14";
+const APP_VERSION = "v15";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -743,8 +743,13 @@ async function callScanFactureWebhook(file) {
     
     if (!imageBase64) {
       console.error("❌ ERREUR: imageBase64 est vide/null!");
+      showToast("❌ ERREUR: base64 vide - impossible de lire l'image");
+      alert("❌ ERREUR GRAVE:\n\nimageBase64 est VIDE ou NULL\n\nLa conversion de l'image a échoué!");
       return null;
     }
+    
+    // AFFICHER SUR L'APP
+    showToast(`📊 DEBUG: base64 length = ${imageBase64.length}`);
     
     // Créer payload JSON (comme Scan Facture)
     const payload = {
@@ -767,6 +772,8 @@ async function callScanFactureWebhook(file) {
     console.log("✓ JSON stringifié. Length:", jsonBody.length);
     console.log("✓ Premiers 200 char du JSON:", jsonBody.slice(0, 200));
     
+    showToast(`✓ Payload prêt (${jsonBody.length} bytes) - envoi en cours...`);
+    
     const response = await fetch(SCAN_FACTURE_WEBHOOK, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -777,13 +784,19 @@ async function callScanFactureWebhook(file) {
     clearTimeout(timeout);
     console.log("Scan Facture: réponse", response.status);
     
+    showToast(`← Webhook réponse: status ${response.status}`);
+    
     if (!response.ok) {
       console.error("Webhook error status:", response.status);
+      const errBody = await response.text();
+      showToast(`❌ Webhook error ${response.status}`);
+      alert(`❌ WEBHOOK ERREUR!\n\nStatus: ${response.status}\n\n${errBody.slice(0, 300)}`);
       return null;
     }
     
     const data = await response.json();
     console.log("Scan Facture: données reçues", data);
+    showToast("✅ Données reçues du webhook! Traitement...");
     
     // Extraire les bonnes clés (avec .value)
     const result = {};
