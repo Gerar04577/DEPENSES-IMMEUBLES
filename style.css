@@ -371,16 +371,21 @@ body{
 /* ============= v11: Warranty Fields & Consultation ============= */
 
 .warranty-toggle{
-  padding: 8px 0;
+  padding: 12px 0;
+  margin-bottom: 8px;
 }
 
 .checkbox-label{
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink);
+  font-size: 15px;
+  padding: 8px;
+  background: rgba(184, 114, 46, 0.08);
+  border-radius: 4px;
 }
 
 .warranty-checkbox{
@@ -391,6 +396,23 @@ body{
 
 .warranty-fields{
   border-left: 3px solid var(--copper);
+  padding: 16px !important;
+  margin-top: 12px !important;
+  margin-bottom: 12px !important;
+  background: linear-gradient(135deg, #f9f3e6 0%, #fef5e7 100%);
+  border-radius: 6px;
+}
+
+.warranty-fields .field-row{
+  margin-bottom: 16px !important;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(184, 114, 46, 0.15);
+}
+
+.warranty-fields .field-row:last-child{
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 #tabGaranties{

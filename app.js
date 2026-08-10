@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v11";
+const APP_VERSION = "v12";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -640,9 +640,9 @@ async function soumettreFormulaire(e) {
     }
   }
 
-  // Scan Facture (garantie)
+  // Scan Facture (garantie) — amélioration avec fallback
   if (depense.garantie && factureGarantieChoisi) {
-    showToast("Lecture facture (Scan Facture)...");
+    showToast("📄 Lecture facture (Scan Facture)...");
     try {
       const dateExtracted = await callScanFactureWebhook(factureGarantieChoisi);
       if (dateExtracted) {
@@ -651,14 +651,25 @@ async function soumettreFormulaire(e) {
         const dateEnd = new Date(dateExtracted);
         dateEnd.setFullYear(dateEnd.getFullYear() + 2);
         depense.dateFinGarantie = dateEnd.toISOString().split("T")[0];
-        showToast("✓ Dates garantie calculées");
+        showToast("✓ Dates garantie calculées automatiquement");
+      } else {
+        console.warn("Scan Facture: pas de date extraite");
+        showToast("⚠️ Scan Facture indisponible — remplis les dates manuellement");
       }
     } catch (err) {
-      console.error("Échec Scan Facture:", err);
-      showToast("Scan Facture non disponible, remplis les dates manuellement");
+      console.error("Échec Scan Facture webhook:", err.message);
+      showToast("⚠️ Scan Facture indisponible — remplis les dates manuellement");
     }
   }
 
+  // Si c'est une garantie → montrer pop-up de vérification
+  if (depense.garantie && depense.dateDebutGarantie) {
+    afficherPopupVerification(depense);
+    if (btnSubmit) btnSubmit.disabled = false;
+    return;
+  }
+  
+  // Sinon enregistrer directement
   if (depenseExistante) {
     Object.assign(depenseExistante, depense);
   } else {
@@ -678,24 +689,61 @@ async function callScanFactureWebhook(file) {
   formData.append("file", file);
 
   try {
+    console.log("Scan Facture: envoi facture...", file.name);
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    
     const response = await fetch(SCAN_FACTURE_WEBHOOK, {
       method: "POST",
-      body: formData
+      body: formData,
+      signal: controller.signal
     });
     
-    if (!response.ok) throw new Error("Webhook error");
+    clearTimeout(timeout);
+    console.log("Scan Facture: réponse", response.status);
+    
+    if (!response.ok) {
+      console.error("Webhook error status:", response.status);
+      return null;
+    }
     
     const data = await response.json();
+    console.log("Scan Facture: données reçues", data);
+    
+    // Extraire et normaliser les données
+    const result = {};
+    
+    // Date facture
     if (data.invoiceDate) {
-      // Convertir DD/MM/YYYY en YYYY-MM-DD
-      if (data.invoiceDate.includes("/")) {
-        const [day, month, year] = data.invoiceDate.split("/");
-        return `${year}-${month}-${day}`;
+      let dateExtracted = data.invoiceDate;
+      if (dateExtracted.includes("/")) {
+        const [day, month, year] = dateExtracted.split("/");
+        dateExtracted = `${year}-${month}-${day}`;
       }
-      return data.invoiceDate;
+      result.invoiceDate = dateExtracted;
+      console.log("✓ Date facture:", dateExtracted);
     }
+    
+    // Montant TTC
+    if (data.totalAmount) {
+      result.totalAmount = parseFloat(data.totalAmount);
+      console.log("✓ Montant TTC:", result.totalAmount);
+    }
+    
+    // Fournisseur
+    if (data.supplierName) {
+      result.supplierName = data.supplierName;
+      console.log("✓ Fournisseur:", result.supplierName);
+    }
+    
+    return result.invoiceDate ? result : null;
   } catch (err) {
-    console.error("Scan Facture webhook error:", err);
+    if (err.name === "AbortError") {
+      console.error("Scan Facture: timeout (15s)");
+    } else {
+      console.error("Scan Facture webhook error:", err.message);
+    }
     return null;
   }
 }
@@ -737,6 +785,83 @@ function escapeHtml(str) {
 }
 
 // ==========================================================
+// Pop-up de vérification Scan Facture
+// ==========================================================
+let warrantyScanData = null; // Données du dernier scan
+
+function afficherPopupVerification(depense) {
+  warrantyScanData = null;
+  
+  const content = el("verifyContent");
+  content.innerHTML = `
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr style="border-bottom: 1px solid #ddd;">
+        <td style="padding: 12px; font-weight: bold; width: 40%;">Date d'achat (facture):</td>
+        <td style="padding: 12px;">${depense.date}</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #ddd;">
+        <td style="padding: 12px; font-weight: bold;">Montant TTC:</td>
+        <td style="padding: 12px;">${depense.montant.toFixed(2)}€</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #ddd;">
+        <td style="padding: 12px; font-weight: bold;">Fournisseur:</td>
+        <td style="padding: 12px;">${depense.fournisseurGarantie || "—"}</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #ddd;">
+        <td style="padding: 12px; font-weight: bold;">Date début garantie:</td>
+        <td style="padding: 12px;">${depense.dateDebutGarantie || "—"}</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px; font-weight: bold;">Date fin garantie:</td>
+        <td style="padding: 12px;">${depense.dateFinGarantie || "—"}</td>
+      </tr>
+    </table>
+    <div style="background: #fffacd; padding: 12px; border-radius: 6px; margin-top: 16px; border-left: 3px solid #ffd700;">
+      <strong>⚠️ Vérifie ces données avant de confirmer!</strong>
+    </div>
+  `;
+  
+  warrantyScanData = depense;
+  
+  el("verifyModal").style.display = "block";
+  el("verifyBackdrop").style.display = "block";
+}
+
+function fermerPopupVerification() {
+  el("verifyModal").style.display = "none";
+  el("verifyBackdrop").style.display = "none";
+  warrantyScanData = null;
+}
+
+function attachEventsVerification() {
+  el("btnCloseVerify").addEventListener("click", fermerPopupVerification);
+  el("verifyBackdrop").addEventListener("click", fermerPopupVerification);
+  
+  el("btnCancelVerify").addEventListener("click", fermerPopupVerification);
+  
+  el("btnConfirmVerify").addEventListener("click", async () => {
+    if (!warrantyScanData) return;
+    
+    fermerPopupVerification();
+    
+    // Enregistrer pour vrai
+    const depense = warrantyScanData;
+    const depenseExistante = depenses.find(d => d.id === depense.id);
+    
+    if (depenseExistante) {
+      Object.assign(depenseExistante, depense);
+    } else {
+      depenses.push(depense);
+    }
+    
+    fermerModal();
+    showToast("✓ Garantie enregistrée");
+    await sauvegarderDonnees();
+    render();
+  });
+}
+
+// ==========================================================
 // Événements
 // ==========================================================
 function attachEvents() {
@@ -754,6 +879,67 @@ function attachEvents() {
   // Gestion warranty toggle
   el("fGarantie").addEventListener("change", (e) => {
     el("warrantyFields").style.display = e.target.checked ? "block" : "none";
+  });
+
+  // Bouton Scan Facture (Warranty)
+  el("btnScanFactureWarranty").addEventListener("click", (e) => {
+    e.preventDefault();
+    el("fFactureGarantie").click();
+  });
+
+  el("fFactureGarantie").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    showToast("📄 Scan en cours...");
+    const scanResult = await callScanFactureWebhook(file);
+    
+    if (scanResult) {
+      // Remplir les champs automatiquement
+      if (scanResult.invoiceDate) {
+        el("fDate").value = scanResult.invoiceDate; // Date d'achat
+        el("fDateDebutGarantie").value = scanResult.invoiceDate; // Date début garantie
+        
+        // Calculer date fin (+2 ans)
+        const dateEnd = new Date(scanResult.invoiceDate);
+        dateEnd.setFullYear(dateEnd.getFullYear() + 2);
+        el("fDateFinGarantie").value = dateEnd.toISOString().split("T")[0];
+      }
+      
+      if (scanResult.totalAmount) {
+        el("fMontant").value = scanResult.totalAmount.toFixed(2);
+      }
+      
+      if (scanResult.supplierName) {
+        // Chercher le fournisseur dans la liste
+        const options = Array.from(el("fFournisseurGarantie").options);
+        const found = options.find(opt => opt.text === scanResult.supplierName);
+        if (found) {
+          el("fFournisseurGarantie").value = found.value;
+        } else {
+          el("fFournisseurGarantie").value = ""; // Laisser blank si pas trouvé
+        }
+      }
+      
+      // Afficher résultat
+      const resultDiv = el("scanResultWarranty");
+      resultDiv.innerHTML = `
+        <div style="background: #e4f3ea; padding: 12px; border-radius: 6px; border-left: 3px solid #2f7a55;">
+          <strong>✓ Facture scannée avec succès!</strong><br>
+          <small>Date: ${scanResult.invoiceDate} | Montant: ${scanResult.totalAmount?.toFixed(2) || "?"} € | Fournisseur: ${scanResult.supplierName || "?"}</small>
+        </div>
+      `;
+      
+      showToast("✓ Données extraites — Vérifier avant enregistrement");
+    } else {
+      showToast("⚠️ Scan Facture indisponible — Remplis manuellement");
+      el("scanResultWarranty").innerHTML = `
+        <div style="background: #fff8e1; padding: 12px; border-radius: 6px; border-left: 3px solid #f57f17;">
+          <strong>⚠️ Scan Facture indisponible</strong><br>
+          <small>Remplis les champs manuellement ci-dessous.</small>
+        </div>
+      `;
+    }
   });
 
   el("fFactureGarantie").addEventListener("change", (e) => {
@@ -826,6 +1012,9 @@ function attachEvents() {
       e.returnValue = "";
     }
   });
+  
+  // Événements du pop-up de vérification
+  attachEventsVerification();
 }
 
 // ==========================================================
