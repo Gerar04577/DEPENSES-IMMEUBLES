@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v15";
+const APP_VERSION = "v16";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -751,17 +751,17 @@ async function callScanFactureWebhook(file) {
     // AFFICHER SUR L'APP
     showToast(`📊 DEBUG: base64 length = ${imageBase64.length}`);
     
-    // Créer payload JSON (comme Scan Facture)
+    // Créer payload JSON (EXACTEMENT comme Scan Facture)
     const payload = {
       action: "analyser",
       filename: mimeType === "application/pdf" ? "facture.pdf" : "facture.jpg",
       mimeType,
-      base64Source: imageBase64
+      imageBase64
     };
     
     console.log("✓ Payload créé. Clés présentes:", Object.keys(payload));
-    console.log("✓ base64Source présent dans payload?", "base64Source" in payload);
-    console.log("✓ base64Source length:", payload.base64Source ? payload.base64Source.length : "NULL");
+    console.log("✓ imageBase64 présent dans payload?", "imageBase64" in payload);
+    console.log("✓ imageBase64 length:", payload.imageBase64 ? payload.imageBase64.length : "NULL");
     
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
@@ -777,7 +777,7 @@ async function callScanFactureWebhook(file) {
     const response = await fetch(SCAN_FACTURE_WEBHOOK, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: jsonBody,
       signal: controller.signal
     });
     
