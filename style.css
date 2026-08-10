@@ -74,9 +74,16 @@ body{
   letter-spacing: 0.06em;
 }
 
-.conn-status{ display:flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-.conn-label{ font-size: 11px; color:#AEB9CC; font-family: var(--font-mono); }
-.user-email{ font-size: 11px; color:#AEB9CC; font-family: var(--font-mono); display: block; margin: 4px 0; }
+.conn-status{ 
+  display: flex; 
+  flex-direction: row;
+  align-items: center; 
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+.conn-label{ font-size: 11px; color:#AEB9CC; font-family: var(--font-mono); white-space: nowrap; }
+.user-email{ font-size: 11px; color:#AEB9CC; font-family: var(--font-mono); display: inline; margin: 0 4px; white-space: nowrap; }
 
 .tabs{
   display:flex;

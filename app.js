@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v12";
+const APP_VERSION = "v13";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -744,7 +744,7 @@ async function callScanFactureWebhook(file) {
       action: "analyser",
       filename: mimeType === "application/pdf" ? "facture.pdf" : "facture.jpg",
       mimeType,
-      imageBase64
+      base64Source: imageBase64
     };
     
     const controller = new AbortController();
