@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v27";
+const APP_VERSION = "v28";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -851,64 +851,33 @@ async function callScanFactureWebhook(file) {
       result.supplierName = data.fournisseur.value;
     }
     
-    // Upload facture scannée vers OneDrive si tout s'est bien passé
+    // Upload facture si extraction OK (sans bloquer)
     if (result.invoiceDate && file && onedriveConnecte && window.GraphStorage) {
       try {
-        updateScanProgress(95, "Sauvegarde de la facture...");
-        console.log("🔵 Upload facture START:", { file: file.name, connected: onedriveConnecte });
-        
-        // Convertir file en ArrayBuffer avec FileReader (compatible tous navigateurs)
         const fileData = await new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = () => {
-            console.log("✓ FileReader onload - arrayBuffer size:", reader.result.byteLength);
-            resolve(reader.result);
-          };
-          reader.onerror = () => reject(new Error("Impossible de lire le fichier"));
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error("Impossible de lire"));
           reader.readAsArrayBuffer(file);
         });
-        
         const extension = file.name.split('.').pop() || 'pdf';
-        console.log("📤 Appel sauvegarderFactureScannee avec:", { 
-          fileDataSize: fileData.byteLength, 
-          extension,
-          date: result.invoiceDate,
-          supplier: result.supplierName,
-          amount: result.totalAmount 
-        });
-        
         await GraphStorage.sauvegarderFactureScannee(
-          fileData,
-          `facture.${extension}`,
-          result.invoiceDate,
-          result.supplierName,
-          result.totalAmount
+          fileData, `facture.${extension}`, result.invoiceDate, result.supplierName, result.totalAmount
         );
-        console.log("✓✓ Facture sauvegardée dans OneDrive avec succès");
         showToast("✓ Facture sauvegardée dans OneDrive");
       } catch (err) {
-        console.error("❌ Erreur sauvegarde facture OneDrive:", err.message, err);
-        showToast("⚠ Facture: erreur sauvegarde OneDrive");
+        console.error("Erreur upload facture:", err);
       }
-    } else {
-      console.log("⚠ Conditions upload non remplies:", { 
-        hasInvoiceDate: !!result.invoiceDate, 
-        hasFile: !!file, 
-        ondriveConnecte,
-        hasGraphStorage: !!window.GraphStorage 
-      });
     }
     
     if (!result.invoiceDate) {
       console.error("❌ Extraction échouée: invoiceDate manquant");
       showToast("❌ Erreur: impossible d'extraire la date");
-      showScanProgress(false);
-      return null;
     }
     
     updateScanProgress(100, "Terminé! ✓");
     setTimeout(() => showScanProgress(false), 1500);
-    return result;
+    return result.invoiceDate ? result : null;
   } catch (err) {
     if (err.name === "AbortError") {
       console.error("Scan Facture: timeout (60s)");
