@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v23";
+const APP_VERSION = "v24";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -769,53 +769,34 @@ async function fileToBase64(file) {
 async function callScanFactureWebhook(file) {
   try {
     console.log("Scan Facture: envoi facture...", file.name);
-    showToast("🔵 callScanFactureWebhook DÉBUT");
-    alert(`🔵 DÉBUT SCAN FACTURE\n\nFichier: ${file.name}\nSize: ${file.size} bytes`);
+    showToast("🔵 Scan Facture en cours...");
     showToast(`File: ${file.name}, size: ${file.size} bytes`);
     
     // Convertir en Base64
-    showToast("→ Appel fileToBase64...");
     const { base64: imageBase64, mimeType } = await fileToBase64(file);
     console.log("✓ fileToBase64 terminé. imageBase64 length:", imageBase64 ? imageBase64.length : "NULL");
-    console.log("✓ mimeType:", mimeType);
-    
-    showToast(`✓ fileToBase64 FIN - length: ${imageBase64 ? imageBase64.length : "NULL"}`);
-    showToast(`✓ mimeType: ${mimeType}`);
     
     if (!imageBase64) {
       console.error("❌ ERREUR: imageBase64 est vide/null!");
-      showToast("❌ ERREUR: base64 vide - impossible de lire l'image");
-      alert("❌ ERREUR GRAVE:\n\nimageBase64 est VIDE ou NULL\n\nLa conversion de l'image a échoué!");
+      showToast("❌ ERREUR: impossible de lire l'image");
       return null;
     }
     
     // AFFICHER SUR L'APP
     showToast(`📊 DEBUG: base64 length = ${imageBase64.length}`);
     
-    // Créer payload JSON (EXACTEMENT comme Scan Facture)
+    // Créer payload JSON
     const payload = {
       action: "analyser",
       filename: mimeType === "application/pdf" ? "facture.pdf" : "facture.jpg",
       mimeType,
-      imageBase64    // Shorthand comme Scan Facture
+      imageBase64
     };
     
-    console.log("✓ Payload créé. Clés présentes:", Object.keys(payload));
-    console.log("✓ imageBase64 présent dans payload?", "imageBase64" in payload);
-    console.log("✓ imageBase64 length:", payload.imageBase64 ? payload.imageBase64.length : "NULL");
+    const jsonBody = JSON.stringify(payload);
     
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);  // 60 secondes au lieu de 15
-    
-    console.log("→ Envoi webhook...", SCAN_FACTURE_WEBHOOK);
-    
-    const jsonBody = JSON.stringify(payload);
-    console.log("✓ JSON stringifié. Length:", jsonBody.length);
-    console.log("✓ Premiers 200 char du JSON:", jsonBody.slice(0, 200));
-    
-    showToast(`📦 JSON.stringify: ${jsonBody.length} bytes`);
-    showToast(`Payload.imageBase64 length: ${payload.imageBase64.length}`);
-    showToast(`→ Envoi au webhook (${jsonBody.length} bytes)...`);
+    const timeout = setTimeout(() => controller.abort(), 60000);  // 60 secondes
     
     const response = await fetch(SCAN_FACTURE_WEBHOOK, {
       method: "POST",
@@ -827,35 +808,18 @@ async function callScanFactureWebhook(file) {
     clearTimeout(timeout);
     console.log("Scan Facture: réponse", response.status);
     
-    showToast(`← Webhook réponse: status ${response.status}`);
-    alert(`← RÉPONSE WEBHOOK: Status ${response.status}`);
-    
     if (!response.ok) {
       console.error("Webhook error status:", response.status);
-      const errBody = await response.text();
-      showToast(`❌ Webhook error ${response.status}`);
-      alert(`❌ WEBHOOK ERREUR!\n\nStatus: ${response.status}\n\n${errBody.slice(0, 300)}`);
+      showToast(`❌ Webhook erreur ${response.status}`);
       return null;
     }
     
     const data = await response.json();
     console.log("Scan Facture: données reçues", data);
-    showToast("✅ Données reçues du webhook! Traitement...");
-    
-    // AFFICHER DANS UNE ALERT PERMANENTE
-    const dataKeys = Object.keys(data).join(", ");
-    const dataJson = JSON.stringify(data, null, 2).slice(0, 500);
-    alert(`📦 RÉPONSE WEBHOOK REÇUE:\n\nClés: ${dataKeys}\n\nJSON:\n${dataJson}...`);
+    showToast("✅ Données reçues!");
     
     // Extraire les bonnes clés (avec .value)
     const result = {};
-    
-    console.log("data.date:", data.date);
-    console.log("data.ttc:", data.ttc);
-    console.log("data.fournisseur:", data.fournisseur);
-    showToast(`data.date existe? ${data.date ? "OUI" : "NON"}`);
-    showToast(`data.ttc existe? ${data.ttc ? "OUI" : "NON"}`);
-    showToast(`data.fournisseur existe? ${data.fournisseur ? "OUI" : "NON"}`);
     
     // Date facture
     if (data.date && data.date.value) {
@@ -866,33 +830,21 @@ async function callScanFactureWebhook(file) {
         dateExtracted = `${annee}-${mois.padStart(2, "0")}-${jour.padStart(2, "0")}`;
       }
       result.invoiceDate = dateExtracted;
-      console.log("✓ Date facture:", dateExtracted);
     }
     
     // Montant TTC
     if (data.ttc && data.ttc.value) {
       result.totalAmount = parseFloat(data.ttc.value);
-      console.log("✓ Montant TTC:", result.totalAmount);
     }
     
     // Fournisseur
     if (data.fournisseur && data.fournisseur.value) {
       result.supplierName = data.fournisseur.value;
-      console.log("✓ Fournisseur:", result.supplierName);
     }
     
-    console.log("Result object:", result);
-    showToast(`✓ result.invoiceDate: ${result.invoiceDate || "VIDE"}`);
-    showToast(`✓ result.totalAmount: ${result.totalAmount || "VIDE"}`);
-    showToast(`✓ result.supplierName: ${result.supplierName || "VIDE"}`);
-    
     if (!result.invoiceDate) {
-      const msg = `❌ EXTRACTION ÉCHOUE!\n\ndata.date: ${JSON.stringify(data.date)}\ndata.ttc: ${JSON.stringify(data.ttc)}\ndata.fournisseur: ${JSON.stringify(data.fournisseur)}\n\nResult object: ${JSON.stringify(result)}`;
-      alert(msg);
-      showToast("❌ ERREUR: invoiceDate n'a pas pu être extrait!");
-      console.error("❌ invoiceDate is empty, returning null");
-    } else {
-      alert(`✅ SUCCÈS!\n\ninvoiceDate: ${result.invoiceDate}\ntotalAmount: ${result.totalAmount}\nsupplierName: ${result.supplierName}`);
+      console.error("❌ Extraction échouée: invoiceDate manquant");
+      showToast("❌ Erreur: impossible d'extraire la date");
     }
     
     return result.invoiceDate ? result : null;
