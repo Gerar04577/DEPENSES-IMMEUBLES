@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v28";
+const APP_VERSION = "v30";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -852,22 +852,38 @@ async function callScanFactureWebhook(file) {
     }
     
     // Upload facture si extraction OK (sans bloquer)
+    console.log("🔍 Avant upload check:", { 
+      invoiceDate: !!result.invoiceDate, 
+      file: !!file, 
+      onedriveConnecte, 
+      GraphStorage: !!window.GraphStorage 
+    });
+    
     if (result.invoiceDate && file && onedriveConnecte && window.GraphStorage) {
+      console.log("✓ Upload check PASSED - tentative upload...");
       try {
         const fileData = await new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
+          reader.onload = () => {
+            console.log("✓ FileReader OK, size:", reader.result.byteLength);
+            resolve(reader.result);
+          };
           reader.onerror = () => reject(new Error("Impossible de lire"));
           reader.readAsArrayBuffer(file);
         });
         const extension = file.name.split('.').pop() || 'pdf';
+        console.log("📤 Appel GraphStorage.sauvegarderFactureScannee...");
         await GraphStorage.sauvegarderFactureScannee(
           fileData, `facture.${extension}`, result.invoiceDate, result.supplierName, result.totalAmount
         );
+        console.log("✓✓✓ Upload réussi!");
         showToast("✓ Facture sauvegardée dans OneDrive");
       } catch (err) {
-        console.error("Erreur upload facture:", err);
+        console.error("❌ ERREUR UPLOAD:", err.message, err);
+        showToast("⚠ Erreur upload facture");
       }
+    } else {
+      console.log("❌ Upload check FAILED - pas d'upload");
     }
     
     if (!result.invoiceDate) {

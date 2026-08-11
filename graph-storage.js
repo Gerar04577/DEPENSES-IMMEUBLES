@@ -49,6 +49,8 @@ const GraphStorage = (() => {
   async function assurerArborescence() {
     await assurerDossier(DOSSIER_RACINE, DOSSIER_APP);
     await assurerDossier(`${DOSSIER_RACINE}/${DOSSIER_APP}`, SOUS_DOSSIER_JUSTIFICATIFS);
+    // Créer factures-scannees dans justificatifs
+    await assurerDossier(`${DOSSIER_RACINE}/${DOSSIER_APP}/${SOUS_DOSSIER_JUSTIFICATIFS}`, "factures-scannees");
   }
 
   // ---- Dépenses (fichier JSON unique) ----
@@ -103,17 +105,13 @@ const GraphStorage = (() => {
 
   // Upload facture scannée avec nommage explicite (date, fournisseur, montant)
   async function sauvegarderFactureScannee(fileData, fileName, dateFacture, fournisseur, montantTTC) {
-    await assurerArborescence();
-    
-    // Créer le sous-dossier "factures-scannees"
-    const cheminParent = `${DOSSIER_RACINE}/${DOSSIER_APP}/justificatifs`;
-    await assurerDossier(cheminParent, "factures-scannees");
+    await assurerArborescence(); // Assure que factures-scannees existe déjà
     
     // Créer un nom de fichier explicite et trouvable par recherche
     // Format: YYYY-MM-DD_FOURNISSEUR_MONTANT_EUR.extension
     const montantStr = montantTTC ? montantTTC.toString().replace(".", ",") : "0";
     const nomFichier = `${dateFacture}_${(fournisseur || "UNKNOWN").toUpperCase().replace(/[\\/:*?"<>|€]/g, "_")}_${montantStr}_EUR_${fileName}`;
-    const chemin = `${cheminParent}/factures-scannees/${nomFichier}`;
+    const chemin = `${DOSSIER_RACINE}/${DOSSIER_APP}/${SOUS_DOSSIER_JUSTIFICATIFS}/factures-scannees/${nomFichier}`;
     const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
 
     console.log("Upload facture OneDrive:", { dateFacture, fournisseur, montantTTC, nomFichier, chemin });
