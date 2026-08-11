@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v21";
+const APP_VERSION = "v22";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -770,6 +770,7 @@ async function callScanFactureWebhook(file) {
   try {
     console.log("Scan Facture: envoi facture...", file.name);
     showToast("🔵 callScanFactureWebhook DÉBUT");
+    alert(`🔵 DÉBUT SCAN FACTURE\n\nFichier: ${file.name}\nSize: ${file.size} bytes`);
     showToast(`File: ${file.name}, size: ${file.size} bytes`);
     
     // Convertir en Base64
@@ -827,6 +828,7 @@ async function callScanFactureWebhook(file) {
     console.log("Scan Facture: réponse", response.status);
     
     showToast(`← Webhook réponse: status ${response.status}`);
+    alert(`← RÉPONSE WEBHOOK: Status ${response.status}`);
     
     if (!response.ok) {
       console.error("Webhook error status:", response.status);
@@ -840,9 +842,10 @@ async function callScanFactureWebhook(file) {
     console.log("Scan Facture: données reçues", data);
     showToast("✅ Données reçues du webhook! Traitement...");
     
-    // AFFICHER CE QU'ON REÇOIT
-    showToast(`📦 Réponse raw: ${JSON.stringify(data).slice(0, 100)}...`);
-    showToast(`Clés présentes: ${Object.keys(data).join(", ")}`);
+    // AFFICHER DANS UNE ALERT PERMANENTE
+    const dataKeys = Object.keys(data).join(", ");
+    const dataJson = JSON.stringify(data, null, 2).slice(0, 500);
+    alert(`📦 RÉPONSE WEBHOOK REÇUE:\n\nClés: ${dataKeys}\n\nJSON:\n${dataJson}...`);
     
     // Extraire les bonnes clés (avec .value)
     const result = {};
@@ -884,8 +887,12 @@ async function callScanFactureWebhook(file) {
     showToast(`✓ result.supplierName: ${result.supplierName || "VIDE"}`);
     
     if (!result.invoiceDate) {
+      const msg = `❌ EXTRACTION ÉCHOUE!\n\ndata.date: ${JSON.stringify(data.date)}\ndata.ttc: ${JSON.stringify(data.ttc)}\ndata.fournisseur: ${JSON.stringify(data.fournisseur)}\n\nResult object: ${JSON.stringify(result)}`;
+      alert(msg);
       showToast("❌ ERREUR: invoiceDate n'a pas pu être extrait!");
       console.error("❌ invoiceDate is empty, returning null");
+    } else {
+      alert(`✅ SUCCÈS!\n\ninvoiceDate: ${result.invoiceDate}\ntotalAmount: ${result.totalAmount}\nsupplierName: ${result.supplierName}`);
     }
     
     return result.invoiceDate ? result : null;
