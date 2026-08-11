@@ -110,11 +110,14 @@ const GraphStorage = (() => {
     await assurerDossier(cheminParent, "factures-scannees");
     
     // Créer un nom de fichier explicite et trouvable par recherche
-    // Format: YYYY-MM-DD_FOURNISSEUR_MONTANT.extension
-    const nomFichier = `${dateFacture}_${(fournisseur || "UNKNOWN").toUpperCase().replace(/[\\/:*?"<>|]/g, "_")}_${montantTTC || "0"}€_${fileName}`;
+    // Format: YYYY-MM-DD_FOURNISSEUR_MONTANT_EUR.extension
+    const montantStr = montantTTC ? montantTTC.toString().replace(".", ",") : "0";
+    const nomFichier = `${dateFacture}_${(fournisseur || "UNKNOWN").toUpperCase().replace(/[\\/:*?"<>|€]/g, "_")}_${montantStr}_EUR_${fileName}`;
     const chemin = `${cheminParent}/factures-scannees/${nomFichier}`;
     const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
 
+    console.log("Upload facture OneDrive:", { dateFacture, fournisseur, montantTTC, nomFichier, chemin });
+    
     const resp = await appelGraph(url, {
       method: "PUT",
       headers: { "Content-Type": "application/octet-stream" },
@@ -122,6 +125,7 @@ const GraphStorage = (() => {
     });
     if (!resp.ok) throw new Error(`Échec upload facture scannée (${resp.status})`);
     const item = await resp.json();
+    console.log("✓ Facture uploadée avec succès:", nomFichier);
     return { nom: nomFichier, webUrl: item.webUrl, itemId: item.id };
   }
 
