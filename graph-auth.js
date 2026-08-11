@@ -2,6 +2,7 @@
 // graph-auth.js — OAuth 2.0 + PKCE pour Microsoft Graph
 // Codé à la main, sans librairie ni CDN (même principe que VeroS
 // et Gestion Loyers). Compte Microsoft personnel uniquement.
+// VERSION: v35
 // ==========================================================
 //
 // À REMPLIR PAR GÉRARD après création de l'inscription Entra
