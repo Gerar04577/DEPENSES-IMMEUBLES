@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v34";
+const APP_VERSION = "v35";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -1017,7 +1017,7 @@ function attachEventsVerification() {
   
   el("btnCancelVerify").addEventListener("click", fermerPopupVerification);
   
-  el("btnConfirmVerify").addEventListener("click", () => {
+  el("btnConfirmVerify").addEventListener("click", async () => {
     if (!warrantyScanData) return;
     
     fermerPopupVerification();
@@ -1162,7 +1162,7 @@ function attachEvents() {
   el("filterStudio").addEventListener("change", renderWarrantyConsultation);
   el("filterStatusGarantie").addEventListener("change", renderWarrantyConsultation);
 
-  el("btnConnect").addEventListener("click", () => {
+  el("btnConnect").addEventListener("click", async () => {
     if (window.GraphAuth) {
       await GraphAuth.connecter();
     }
@@ -1181,7 +1181,7 @@ function attachEvents() {
     }
   });
 
-  el("btnEnregistrerMaintenant").addEventListener("click", () => {
+  el("btnEnregistrerMaintenant").addEventListener("click", async () => {
     const btn = el("btnEnregistrerMaintenant");
     btn.disabled = true;
     btn.textContent = "Enregistrement...";
