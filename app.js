@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v31";
+const APP_VERSION = "v34";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -1017,7 +1017,7 @@ function attachEventsVerification() {
   
   el("btnCancelVerify").addEventListener("click", fermerPopupVerification);
   
-  el("btnConfirmVerify").addEventListener("click", async () => {
+  el("btnConfirmVerify").addEventListener("click", () => {
     if (!warrantyScanData) return;
     
     fermerPopupVerification();
@@ -1116,6 +1116,11 @@ function attachEvents() {
         </div>
       `;
       
+      // Masquer le message vert après 60 secondes
+      setTimeout(() => {
+        resultDiv.innerHTML = "";
+      }, 60000);
+      
       showToast("✓ Données extraites — Vérifier avant enregistrement");
     } else {
       showToast("⚠️ Scan Facture indisponible — Remplis manuellement");
@@ -1157,13 +1162,13 @@ function attachEvents() {
   el("filterStudio").addEventListener("change", renderWarrantyConsultation);
   el("filterStatusGarantie").addEventListener("change", renderWarrantyConsultation);
 
-  el("btnConnect").addEventListener("click", async () => {
+  el("btnConnect").addEventListener("click", () => {
     if (window.GraphAuth) {
       await GraphAuth.connecter();
     }
   });
 
-  el("btnDisconnect").addEventListener("click", async () => {
+  el("btnDisconnect").addEventListener("click", () => {
     if (window.GraphAuth) {
       GraphAuth.deconnecter();
       localStorage.clear();
@@ -1176,7 +1181,7 @@ function attachEvents() {
     }
   });
 
-  el("btnEnregistrerMaintenant").addEventListener("click", async () => {
+  el("btnEnregistrerMaintenant").addEventListener("click", () => {
     const btn = el("btnEnregistrerMaintenant");
     btn.disabled = true;
     btn.textContent = "Enregistrement...";
@@ -1225,35 +1230,11 @@ async function verifierReprise() {
 
 // ==========================================================
 // Démarrage
-// ==========================================================
-// ==========================================================
-// Force cache clear au démarrage (pour Service Worker)
-// ==========================================================
-async function forceCacheClear() {
-  try {
-    // Vider les caches Service Worker
-    if ('caches' in window) {
-      const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map(name => caches.delete(name)));
-      console.log("✓ Service Worker caches vidés");
-    }
-    
-    // Vider une clé localStorage pour forcer rechargement
-    const cacheVersion = localStorage.getItem("app-cache-version");
-    const appVersion = "v31";
-    if (cacheVersion !== appVersion) {
-      localStorage.setItem("app-cache-version", appVersion);
-      localStorage.removeItem("depenses-immeubles-data");
-      console.log("✓ Cache applicatif réinitialisé - nouvelle version:", appVersion);
-    }
-  } catch (err) {
-    console.error("Erreur cache clear:", err);
-  }
-}
 
+// ==========================================================
+// Startup - DOMContentLoaded handler
+// ==========================================================
 document.addEventListener("DOMContentLoaded", async () => {
-  await forceCacheClear();  // Vider caches AVANT init
-  
   init();
   afficherBanniere();
   
@@ -1266,5 +1247,3 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 });
-
-// Force update: 2026-08-10 v11 - warranty management with Scan Facture integration

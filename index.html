@@ -9,7 +9,7 @@
 <title>Dépenses Immeubles</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=29">
+<link rel="stylesheet" href="style.css?v=34">
 </head>
 <body>
 
@@ -186,7 +186,7 @@
       <div class="field-row warranty-toggle">
         <label class="checkbox-label">
           <input type="checkbox" id="fGarantie" class="warranty-checkbox">
-          ☑ Matériel avec garantie
+          Matériel avec garantie
         </label>
       </div>
 
@@ -195,7 +195,7 @@
           <label><strong>📄 Scan Facture</strong></label>
           <p class="field-hint">Extrait automatiquement: date d'achat, montant TTC, fournisseur, et dates de garantie.</p>
           <button type="button" id="btnScanFactureWarranty" class="btn btn-primary" style="margin-top: 8px;">
-            📱 Scaner la facture
+            📱 Scanner la facture
           </button>
           <input type="file" id="fFactureGarantie" accept="application/pdf,image/*" class="input" style="display:none;">
           
@@ -278,10 +278,10 @@
   <span id="versionLabel">v17</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
 </footer>
 
-<script src="graph-auth.js?v=29"></script>
-<script src="graph-storage.js?v=29"></script>
-<script src="app.js?v=29"></script>
-<!-- Force update: 2026-08-09 v3 release with save button & reminder banner -->
+<!-- Scripts with cache buster query strings - increment version when deploying -->
+<script src="graph-auth.js?v=34"></script>
+<script src="graph-storage.js?v=34"></script>
+<script src="app.js?v=34"></script>
 </body>
 </html>
 
