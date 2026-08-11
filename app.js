@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v20";
+const APP_VERSION = "v21";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -840,8 +840,19 @@ async function callScanFactureWebhook(file) {
     console.log("Scan Facture: données reçues", data);
     showToast("✅ Données reçues du webhook! Traitement...");
     
+    // AFFICHER CE QU'ON REÇOIT
+    showToast(`📦 Réponse raw: ${JSON.stringify(data).slice(0, 100)}...`);
+    showToast(`Clés présentes: ${Object.keys(data).join(", ")}`);
+    
     // Extraire les bonnes clés (avec .value)
     const result = {};
+    
+    console.log("data.date:", data.date);
+    console.log("data.ttc:", data.ttc);
+    console.log("data.fournisseur:", data.fournisseur);
+    showToast(`data.date existe? ${data.date ? "OUI" : "NON"}`);
+    showToast(`data.ttc existe? ${data.ttc ? "OUI" : "NON"}`);
+    showToast(`data.fournisseur existe? ${data.fournisseur ? "OUI" : "NON"}`);
     
     // Date facture
     if (data.date && data.date.value) {
@@ -865,6 +876,16 @@ async function callScanFactureWebhook(file) {
     if (data.fournisseur && data.fournisseur.value) {
       result.supplierName = data.fournisseur.value;
       console.log("✓ Fournisseur:", result.supplierName);
+    }
+    
+    console.log("Result object:", result);
+    showToast(`✓ result.invoiceDate: ${result.invoiceDate || "VIDE"}`);
+    showToast(`✓ result.totalAmount: ${result.totalAmount || "VIDE"}`);
+    showToast(`✓ result.supplierName: ${result.supplierName || "VIDE"}`);
+    
+    if (!result.invoiceDate) {
+      showToast("❌ ERREUR: invoiceDate n'a pas pu être extrait!");
+      console.error("❌ invoiceDate is empty, returning null");
     }
     
     return result.invoiceDate ? result : null;
