@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v16";
+const APP_VERSION = "v18";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -685,26 +685,46 @@ async function soumettreFormulaire(e) {
 }
 
 async function fileToBase64(file) {
+  console.log("🔵 fileToBase64 DÉBUT - file:", file.name, "type:", file.type, "size:", file.size);
+  
   if (file.type === "application/pdf") {
+    console.log("  → Traitement PDF...");
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
+        console.log("  → reader.onload triggered");
         const result = reader.result;
+        console.log("  → result length:", result.length);
         const commaIdx = result.indexOf(",");
-        resolve({ base64: result.slice(commaIdx + 1), mimeType: "application/pdf" });
+        console.log("  → commaIdx:", commaIdx);
+        const base64 = result.slice(commaIdx + 1);
+        console.log("  → base64 length après slice:", base64.length);
+        if (!base64 || base64.length === 0) {
+          console.error("  ❌ ERREUR: base64 PDF est VIDE!");
+        }
+        resolve({ base64, mimeType: "application/pdf" });
       };
-      reader.onerror = () => reject(new Error("Impossible de lire le fichier PDF."));
+      reader.onerror = (err) => {
+        console.error("  ❌ reader.onerror:", err);
+        reject(new Error("Impossible de lire le fichier PDF."));
+      };
+      console.log("  → Appel readAsDataURL...");
       reader.readAsDataURL(file);
     });
   }
 
+  console.log("  → Traitement IMAGE...");
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
+    console.log("  → objectUrl créé:", objectUrl);
     const img = new Image();
     img.onload = () => {
+      console.log("  → img.onload triggered");
       let { width, height } = img;
+      console.log("  → dimensions originales:", width, "x", height);
       const TAILLE_MAX_COTE = 1800;
       if (width > TAILLE_MAX_COTE || height > TAILLE_MAX_COTE) {
+        console.log("  → Redimensionnement nécessaire...");
         if (width >= height) {
           height = Math.round(height * (TAILLE_MAX_COTE / width));
           width = TAILLE_MAX_COTE;
@@ -712,22 +732,36 @@ async function fileToBase64(file) {
           width = Math.round(width * (TAILLE_MAX_COTE / height));
           height = TAILLE_MAX_COTE;
         }
+        console.log("  → nouvelles dimensions:", width, "x", height);
       }
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
+      console.log("  → Canvas créé:", width, "x", height);
       const ctx = canvas.getContext("2d");
+      console.log("  → Context 2D obtenu");
       ctx.drawImage(img, 0, 0, width, height);
+      console.log("  → Image dessinée sur canvas");
       URL.revokeObjectURL(objectUrl);
 
       const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+      console.log("  → dataUrl créé. Length:", dataUrl.length);
       const commaIdx = dataUrl.indexOf(",");
-      resolve({ base64: dataUrl.slice(commaIdx + 1), mimeType: "image/jpeg" });
+      console.log("  → commaIdx:", commaIdx);
+      const base64 = dataUrl.slice(commaIdx + 1);
+      console.log("  → base64 length après slice:", base64.length);
+      if (!base64 || base64.length === 0) {
+        console.error("  ❌ ERREUR: base64 IMAGE est VIDE après slice!");
+      }
+      console.log("✓ fileToBase64 FIN - base64 length:", base64.length);
+      resolve({ base64, mimeType: "image/jpeg" });
     };
     img.onerror = () => {
+      console.error("  ❌ img.onerror triggered");
       URL.revokeObjectURL(objectUrl);
       reject(new Error("Impossible de lire l'image."));
     };
+    console.log("  → Assignation img.src...");
     img.src = objectUrl;
   });
 }
@@ -751,17 +785,17 @@ async function callScanFactureWebhook(file) {
     // AFFICHER SUR L'APP
     showToast(`📊 DEBUG: base64 length = ${imageBase64.length}`);
     
-    // Créer payload JSON (EXACTEMENT comme Scan Facture)
+    // Créer payload JSON
     const payload = {
       action: "analyser",
       filename: mimeType === "application/pdf" ? "facture.pdf" : "facture.jpg",
       mimeType,
-      imageBase64
+      base64Source: imageBase64
     };
     
     console.log("✓ Payload créé. Clés présentes:", Object.keys(payload));
-    console.log("✓ imageBase64 présent dans payload?", "imageBase64" in payload);
-    console.log("✓ imageBase64 length:", payload.imageBase64 ? payload.imageBase64.length : "NULL");
+    console.log("✓ base64Source présent dans payload?", "base64Source" in payload);
+    console.log("✓ base64Source length:", payload.base64Source ? payload.base64Source.length : "NULL");
     
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
