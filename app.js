@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v22";
+const APP_VERSION = "v23";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -805,7 +805,7 @@ async function callScanFactureWebhook(file) {
     console.log("✓ imageBase64 length:", payload.imageBase64 ? payload.imageBase64.length : "NULL");
     
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 60000);  // 60 secondes au lieu de 15
     
     console.log("→ Envoi webhook...", SCAN_FACTURE_WEBHOOK);
     
@@ -898,8 +898,8 @@ async function callScanFactureWebhook(file) {
     return result.invoiceDate ? result : null;
   } catch (err) {
     if (err.name === "AbortError") {
-      console.error("Scan Facture: timeout (15s)");
-      showToast("❌ Timeout: webhook ne répond pas (15s)");
+      console.error("Scan Facture: timeout (60s)");
+      showToast("❌ Timeout: webhook ne répond pas (60s)");
     } else {
       console.error("Scan Facture webhook error:", err.message);
       showToast(`❌ Erreur: ${err.message}`);
