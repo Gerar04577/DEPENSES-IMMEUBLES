@@ -3,27 +3,30 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v25";
+const APP_VERSION = "v26";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
 const IMMEUBLES = [
   { id: "biche", nom: "Biche", unites: [
     "STUDIO 1","STUDIO 2","STUDIO 3","STUDIO 4","STUDIO 5","STUDIO 6",
-    "STUDIO 7","STUDIO 8","STUDIO 9","STUDIO 10","STUDIO 11","APPARTEMENT"
+    "STUDIO 7","STUDIO 8","STUDIO 9","STUDIO 10","STUDIO 11","APPARTEMENT",
+    "TRAVAUX DANS L'IMMEUBLE"
   ]},
   { id: "nimy", nom: "Nimy", unites: [
     "Studio 1","Studio 2","Studio 3","Studio 4","Studio 5","Studio 6",
-    "Studio 7","Studio 8 (Appartement)","Studio 9","Studio 10","Studio 11","RDC Commercial"
+    "Studio 7","Studio 8 (Appartement)","Studio 9","Studio 10","Studio 11","RDC Commercial",
+    "TRAVAUX DANS L'IMMEUBLE"
   ]},
   { id: "ptg", nom: "Petite Guirlande (PTG)", unites: [
     "Appartement 1er étage arrière","Appartement 3","Appartement RDC Guirlande",
-    "Duplex","RDC Commercial","Studio 4","Studio 5","Studio 6","Studio 7","Studio 8","Studio 9","Studio 10"
+    "Duplex","RDC Commercial","Studio 4","Studio 5","Studio 6","Studio 7","Studio 8","Studio 9","Studio 10",
+    "TRAVAUX DANS L'IMMEUBLE"
   ]},
-  { id: "havre", nom: "Havré", unites: [ "1er Etage","RDC" ]},
-  { id: "egmont", nom: "Egmont", unites: [ "1er Etage","2e Etage","RDC" ]},
-  { id: "fermette", nom: "Pourcelet Fermette", unites: [ "Studio 1","Studio 2","Studio 3","Studio 4" ]},
-  { id: "vannes", nom: "Vannes", unites: [ "1er Etage","2e Etage","3e Etage","Garage","RDC" ]}
+  { id: "havre", nom: "Havré", unites: [ "1er Etage","RDC","TRAVAUX DANS L'IMMEUBLE" ]},
+  { id: "egmont", nom: "Egmont", unites: [ "1er Etage","2e Etage","RDC","TRAVAUX DANS L'IMMEUBLE" ]},
+  { id: "fermette", nom: "Pourcelet Fermette", unites: [ "Studio 1","Studio 2","Studio 3","Studio 4","TRAVAUX DANS L'IMMEUBLE" ]},
+  { id: "vannes", nom: "Vannes", unites: [ "1er Etage","2e Etage","3e Etage","Garage","RDC","TRAVAUX DANS L'IMMEUBLE" ]}
 ];
 
 const NATURES = [
@@ -848,15 +851,37 @@ async function callScanFactureWebhook(file) {
       result.supplierName = data.fournisseur.value;
     }
     
+    // Upload facture scannée vers OneDrive si tout s'est bien passé
+    if (result.invoiceDate && file && onedriveConnecte && window.GraphStorage) {
+      try {
+        updateScanProgress(95, "Sauvegarde de la facture...");
+        const fileData = await file.arrayBuffer();
+        const extension = file.name.split('.').pop() || 'pdf';
+        await GraphStorage.sauvegarderFactureScannee(
+          fileData,
+          `facture.${extension}`,
+          result.invoiceDate,
+          result.supplierName,
+          result.totalAmount
+        );
+        console.log("✓ Facture sauvegardée dans OneDrive");
+        showToast("✓ Facture sauvegardée");
+      } catch (err) {
+        console.error("Erreur sauvegarde facture OneDrive:", err);
+        showToast("⚠ Facture: erreur sauvegarde OneDrive");
+      }
+    }
+    
     if (!result.invoiceDate) {
       console.error("❌ Extraction échouée: invoiceDate manquant");
       showToast("❌ Erreur: impossible d'extraire la date");
+      showScanProgress(false);
+      return null;
     }
     
     updateScanProgress(100, "Terminé! ✓");
     setTimeout(() => showScanProgress(false), 1500);
-    return result.invoiceDate ? result : null;
-    showScanProgress(false);
+    return result;
   } catch (err) {
     if (err.name === "AbortError") {
       console.error("Scan Facture: timeout (60s)");

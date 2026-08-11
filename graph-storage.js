@@ -101,7 +101,31 @@ const GraphStorage = (() => {
     return { nom: file.name, webUrl: item.webUrl, itemId: item.id };
   }
 
-  return { chargerDepenses, sauvegarderDepenses, televerserJustificatif, assurerArborescence };
+  // Upload facture scannée avec nommage explicite (date, fournisseur, montant)
+  async function sauvegarderFactureScannee(fileData, fileName, dateFacture, fournisseur, montantTTC) {
+    await assurerArborescence();
+    
+    // Créer le sous-dossier "factures-scannees"
+    const cheminParent = `${DOSSIER_RACINE}/${DOSSIER_APP}/justificatifs`;
+    await assurerDossier(cheminParent, "factures-scannees");
+    
+    // Créer un nom de fichier explicite et trouvable par recherche
+    // Format: YYYY-MM-DD_FOURNISSEUR_MONTANT.extension
+    const nomFichier = `${dateFacture}_${(fournisseur || "UNKNOWN").toUpperCase().replace(/[\\/:*?"<>|]/g, "_")}_${montantTTC || "0"}€_${fileName}`;
+    const chemin = `${cheminParent}/factures-scannees/${nomFichier}`;
+    const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
+
+    const resp = await appelGraph(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/octet-stream" },
+      body: fileData
+    });
+    if (!resp.ok) throw new Error(`Échec upload facture scannée (${resp.status})`);
+    const item = await resp.json();
+    return { nom: nomFichier, webUrl: item.webUrl, itemId: item.id };
+  }
+
+  return { chargerDepenses, sauvegarderDepenses, televerserJustificatif, sauvegarderFactureScannee, assurerArborescence };
 })();
 
 window.GraphStorage = GraphStorage;
