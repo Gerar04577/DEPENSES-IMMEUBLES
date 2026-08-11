@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v24";
+const APP_VERSION = "v25";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -770,7 +770,10 @@ async function callScanFactureWebhook(file) {
   try {
     console.log("Scan Facture: envoi facture...", file.name);
     showToast("🔵 Scan Facture en cours...");
-    showToast(`File: ${file.name}, size: ${file.size} bytes`);
+    
+    // Afficher barre de progression
+    showScanProgress(true);
+    updateScanProgress(10, "Lecture du fichier...");
     
     // Convertir en Base64
     const { base64: imageBase64, mimeType } = await fileToBase64(file);
@@ -779,11 +782,11 @@ async function callScanFactureWebhook(file) {
     if (!imageBase64) {
       console.error("❌ ERREUR: imageBase64 est vide/null!");
       showToast("❌ ERREUR: impossible de lire l'image");
+      showScanProgress(false);
       return null;
     }
     
-    // AFFICHER SUR L'APP
-    showToast(`📊 DEBUG: base64 length = ${imageBase64.length}`);
+    updateScanProgress(35, "Préparation du payload...");
     
     // Créer payload JSON
     const payload = {
@@ -794,6 +797,7 @@ async function callScanFactureWebhook(file) {
     };
     
     const jsonBody = JSON.stringify(payload);
+    updateScanProgress(50, "Envoi au serveur...");
     
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60000);  // 60 secondes
@@ -806,6 +810,7 @@ async function callScanFactureWebhook(file) {
     });
     
     clearTimeout(timeout);
+    updateScanProgress(75, "Traitement des données...");
     console.log("Scan Facture: réponse", response.status);
     
     if (!response.ok) {
@@ -815,6 +820,7 @@ async function callScanFactureWebhook(file) {
     }
     
     const data = await response.json();
+    updateScanProgress(85, "Extraction des informations...");
     console.log("Scan Facture: données reçues", data);
     showToast("✅ Données reçues!");
     
@@ -847,7 +853,10 @@ async function callScanFactureWebhook(file) {
       showToast("❌ Erreur: impossible d'extraire la date");
     }
     
+    updateScanProgress(100, "Terminé! ✓");
+    setTimeout(() => showScanProgress(false), 1500);
     return result.invoiceDate ? result : null;
+    showScanProgress(false);
   } catch (err) {
     if (err.name === "AbortError") {
       console.error("Scan Facture: timeout (60s)");
@@ -882,9 +891,29 @@ function showToast(msg) {
   toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2500);
 }
 
+// Barre de progression Scan Facture
+function showScanProgress(show) {
+  const container = document.getElementById("scanProgressContainer");
+  if (container) {
+    container.style.display = show ? "block" : "none";
+  }
+}
+
+function updateScanProgress(percent, label) {
+  const bar = document.getElementById("scanProgressBar");
+  const percentText = document.getElementById("scanProgressPercent");
+  const labelText = document.getElementById("scanProgressLabel");
+  
+  if (bar) bar.style.width = percent + "%";
+  if (percentText) percentText.textContent = percent + "%";
+  if (labelText) labelText.textContent = label;
+  
+  console.log(`Scan progress: ${percent}% - ${label}`);
+}
+
 // ==========================================================
 // Utilitaires
-// ==========================================================
+// =========================================================
 function escapeHtml(str) {
   if (!str) return "";
   return str.replace(/[&<>"']/g, c => ({

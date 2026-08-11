@@ -9,7 +9,7 @@
 <title>Dépenses Immeubles</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=24">
+<link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
 
@@ -198,6 +198,18 @@
             📱 Scaner la facture
           </button>
           <input type="file" id="fFactureGarantie" accept="application/pdf,image/*" class="input" style="display:none;">
+          
+          <!-- Barre de progression Scan Facture -->
+          <div id="scanProgressContainer" style="display:none; margin-top: 12px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; align-items: center;">
+              <span id="scanProgressLabel" style="font-size: 12px; font-weight: 600; color: var(--ink-soft);">Lecture du fichier...</span>
+              <span id="scanProgressPercent" style="font-size: 12px; font-weight: 600; color: var(--ink-soft);">0%</span>
+            </div>
+            <div style="width: 100%; height: 6px; background: var(--paper-dark); border-radius: 3px; overflow: hidden;">
+              <div id="scanProgressBar" style="width: 0%; height: 100%; background: var(--brand); border-radius: 3px; transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+          
           <div id="scanResultWarranty" style="margin-top: 12px;"></div>
         </div>
 
@@ -266,9 +278,9 @@
   <span id="versionLabel">v17</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
 </footer>
 
-<script src="graph-auth.js?v=24"></script>
-<script src="graph-storage.js?v=24"></script>
-<script src="app.js?v=24"></script>
+<script src="graph-auth.js?v=25"></script>
+<script src="graph-storage.js?v=25"></script>
+<script src="app.js?v=25"></script>
 <!-- Force update: 2026-08-09 v3 release with save button & reminder banner -->
 </body>
 </html>
