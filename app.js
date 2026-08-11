@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v30";
+const APP_VERSION = "v31";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -1226,7 +1226,34 @@ async function verifierReprise() {
 // ==========================================================
 // Démarrage
 // ==========================================================
+// ==========================================================
+// Force cache clear au démarrage (pour Service Worker)
+// ==========================================================
+async function forceCacheClear() {
+  try {
+    // Vider les caches Service Worker
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(name => caches.delete(name)));
+      console.log("✓ Service Worker caches vidés");
+    }
+    
+    // Vider une clé localStorage pour forcer rechargement
+    const cacheVersion = localStorage.getItem("app-cache-version");
+    const appVersion = "v31";
+    if (cacheVersion !== appVersion) {
+      localStorage.setItem("app-cache-version", appVersion);
+      localStorage.removeItem("depenses-immeubles-data");
+      console.log("✓ Cache applicatif réinitialisé - nouvelle version:", appVersion);
+    }
+  } catch (err) {
+    console.error("Erreur cache clear:", err);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
+  await forceCacheClear();  // Vider caches AVANT init
+  
   init();
   afficherBanniere();
   
