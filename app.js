@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v18";
+const APP_VERSION = "v19";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -769,11 +769,17 @@ async function fileToBase64(file) {
 async function callScanFactureWebhook(file) {
   try {
     console.log("Scan Facture: envoi facture...", file.name);
+    showToast("🔵 callScanFactureWebhook DÉBUT");
+    showToast(`File: ${file.name}, size: ${file.size} bytes`);
     
     // Convertir en Base64
+    showToast("→ Appel fileToBase64...");
     const { base64: imageBase64, mimeType } = await fileToBase64(file);
     console.log("✓ fileToBase64 terminé. imageBase64 length:", imageBase64 ? imageBase64.length : "NULL");
     console.log("✓ mimeType:", mimeType);
+    
+    showToast(`✓ fileToBase64 FIN - length: ${imageBase64 ? imageBase64.length : "NULL"}`);
+    showToast(`✓ mimeType: ${mimeType}`);
     
     if (!imageBase64) {
       console.error("❌ ERREUR: imageBase64 est vide/null!");
@@ -806,7 +812,9 @@ async function callScanFactureWebhook(file) {
     console.log("✓ JSON stringifié. Length:", jsonBody.length);
     console.log("✓ Premiers 200 char du JSON:", jsonBody.slice(0, 200));
     
-    showToast(`✓ Payload prêt (${jsonBody.length} bytes) - envoi en cours...`);
+    showToast(`📦 JSON.stringify: ${jsonBody.length} bytes`);
+    showToast(`Payload.base64Source length: ${payload.base64Source.length}`);
+    showToast(`→ Envoi au webhook (${jsonBody.length} bytes)...`);
     
     const response = await fetch(SCAN_FACTURE_WEBHOOK, {
       method: "POST",
@@ -863,8 +871,10 @@ async function callScanFactureWebhook(file) {
   } catch (err) {
     if (err.name === "AbortError") {
       console.error("Scan Facture: timeout (15s)");
+      showToast("❌ Timeout: webhook ne répond pas (15s)");
     } else {
       console.error("Scan Facture webhook error:", err.message);
+      showToast(`❌ Erreur: ${err.message}`);
     }
     return null;
   }
