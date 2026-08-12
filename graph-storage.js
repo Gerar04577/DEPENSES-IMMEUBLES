@@ -3,7 +3,7 @@
 // Dossier utilisé : "Immobilier 2025-2026/DEPENSES-IMMEUBLES"
 // (dans le dossier partagé, au même niveau que "VeroS" et
 // "GESTION-LOYERS" — voir /areas/veros.md et /areas/loyers-percus-pwa.md)
-// VERSION: v37
+// VERSION: v38
 // ==========================================================
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
@@ -108,6 +108,8 @@ const GraphStorage = (() => {
   async function sauvegarderFactureScannee(fileData, fileName, dateFacture, fournisseur, montantTTC) {
     try {
       await assurerArborescence(); // Assure que factures-scannees existe déjà
+      // Délai replication Microsoft Graph (documentation officielle recommande 5-10s)
+      await new Promise(resolve => setTimeout(resolve, 10000));
     } catch (err) {
       console.error("❌ ERREUR assurerArborescence:", err);
       throw err;
