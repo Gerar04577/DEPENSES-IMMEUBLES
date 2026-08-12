@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v37";
+const APP_VERSION = "v39";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -796,7 +796,7 @@ async function callScanFactureWebhook(file) {
       action: "analyser",
       filename: mimeType === "application/pdf" ? "facture.pdf" : "facture.jpg",
       mimeType,
-      imageBase64
+      imageBase64  // ← v39 marchait AVEC ÇA - pas base64Source!
     };
     
     const jsonBody = JSON.stringify(payload);
@@ -824,7 +824,8 @@ async function callScanFactureWebhook(file) {
     
     const data = await response.json();
     updateScanProgress(85, "Extraction des informations...");
-    console.log("Scan Facture: données reçues", data);
+    console.log("📦 WEBHOOK RETOUR COMPLET:", JSON.stringify(data, null, 2));
+    console.log("📦 WEBHOOK KEYS:", Object.keys(data));
     showToast("✅ Données reçues!");
     
     // Extraire les bonnes clés (avec .value)
@@ -879,16 +880,29 @@ async function callScanFactureWebhook(file) {
         console.log("✓✓✓ Upload réussi!");
         showToast("✓ Facture sauvegardée dans OneDrive");
       } catch (err) {
-        console.error("❌ ERREUR UPLOAD:", err.message, err);
-        showToast("⚠ Erreur upload facture");
+        console.error("❌ ERREUR UPLOAD FACTURE:", err.message, err);
+        // NE PAS afficher le message "sauvegardée" - l'upload a échoué!
+        showToast(`❌ ERREUR: Facture non sauvegardée (${err.message})`);
       }
     } else {
       console.log("❌ Upload check FAILED - pas d'upload");
+      let raison = "❌ Upload ÉCHOUÉ: ";
+      if (!result.invoiceDate) raison += "Date manquante ";
+      if (!file) raison += "Fichier manquant ";
+      if (!onedriveConnecte) raison += "OneDrive déconnecté ";
+      if (!window.GraphStorage) raison += "GraphStorage indisponible";
+      showToast(raison);
+      
+      // AFFICHER la structure EXACTE reçue pour déboguer
+      const keysStr = Object.keys(data).join(", ");
+      console.log("⚠️ STRUCTURE REÇUE:", keysStr);
+      showToast(`📦 Clés reçues: ${keysStr}`);
     }
     
     if (!result.invoiceDate) {
       console.error("❌ Extraction échouée: invoiceDate manquant");
-      showToast("❌ Erreur: impossible d'extraire la date");
+      console.error("Données complètes reçues:", data);
+      showToast("❌ Date non trouvée - vérifier console");
     }
     
     updateScanProgress(100, "Terminé! ✓");
