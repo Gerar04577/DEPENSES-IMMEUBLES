@@ -3,7 +3,7 @@
 // Dossier utilisé : "Immobilier 2025-2026/DEPENSES-IMMEUBLES"
 // (dans le dossier partagé, au même niveau que "VeroS" et
 // "GESTION-LOYERS" — voir /areas/veros.md et /areas/loyers-percus-pwa.md)
-// VERSION: v39
+// VERSION: v37
 // ==========================================================
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
@@ -106,7 +106,12 @@ const GraphStorage = (() => {
 
   // Upload facture scannée avec nommage explicite (date, fournisseur, montant)
   async function sauvegarderFactureScannee(fileData, fileName, dateFacture, fournisseur, montantTTC) {
-    await assurerArborescence(); // Assure que factures-scannees existe déjà
+    try {
+      await assurerArborescence(); // Assure que factures-scannees existe déjà
+    } catch (err) {
+      console.error("❌ ERREUR assurerArborescence:", err);
+      throw err;
+    }
     
     // Créer un nom de fichier explicite et trouvable par recherche
     // Format: YYYY-MM-DD_FOURNISSEUR_MONTANT_EUR.extension
