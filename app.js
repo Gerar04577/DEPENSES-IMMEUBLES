@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v37";
+const APP_VERSION = "v38";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -879,8 +879,9 @@ async function callScanFactureWebhook(file) {
         console.log("✓✓✓ Upload réussi!");
         showToast("✓ Facture sauvegardée dans OneDrive");
       } catch (err) {
-        console.error("❌ ERREUR UPLOAD:", err.message, err);
-        showToast("⚠ Erreur upload facture");
+        console.error("❌ ERREUR UPLOAD FACTURE:", err.message, err);
+        // NE PAS afficher le message "sauvegardée" - l'upload a échoué!
+        showToast(`❌ ERREUR: Facture non sauvegardée (${err.message})`);
       }
     } else {
       console.log("❌ Upload check FAILED - pas d'upload");

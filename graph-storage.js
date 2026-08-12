@@ -3,7 +3,7 @@
 // Dossier utilisé : "Immobilier 2025-2026/DEPENSES-IMMEUBLES"
 // (dans le dossier partagé, au même niveau que "VeroS" et
 // "GESTION-LOYERS" — voir /areas/veros.md et /areas/loyers-percus-pwa.md)
-// VERSION: v37
+// VERSION: v38
 // ==========================================================
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
