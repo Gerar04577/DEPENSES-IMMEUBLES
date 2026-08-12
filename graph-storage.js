@@ -3,7 +3,7 @@
 // Dossier utilisé : "Immobilier 2025-2026/DEPENSES-IMMEUBLES"
 // (dans le dossier partagé, au même niveau que "VeroS" et
 // "GESTION-LOYERS" — voir /areas/veros.md et /areas/loyers-percus-pwa.md)
-// VERSION: v38
+// VERSION: v37
 // ==========================================================
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
@@ -106,17 +106,10 @@ const GraphStorage = (() => {
 
   // Upload facture scannée avec nommage explicite (date, fournisseur, montant)
   async function sauvegarderFactureScannee(fileData, fileName, dateFacture, fournisseur, montantTTC) {
-    console.log("🔵 sauvegarderFactureScannee DÉBUT");
-    
-    // Créer EXPLICITEMENT le dossier factures-scannees
-    const cheminJustificatifs = `${DOSSIER_RACINE}/${DOSSIER_APP}/${SOUS_DOSSIER_JUSTIFICATIFS}`;
-    console.log("📁 Création dossier factures-scannees dans:", cheminJustificatifs);
-    
     try {
-      await assurerDossier(cheminJustificatifs, "factures-scannees");
-      console.log("✅ Dossier factures-scannees OK");
+      await assurerArborescence(); // Assure que factures-scannees existe déjà
     } catch (err) {
-      console.error("❌ ERREUR création factures-scannees:", err);
+      console.error("❌ ERREUR assurerArborescence:", err);
       throw err;
     }
     
@@ -127,7 +120,7 @@ const GraphStorage = (() => {
     const chemin = `${DOSSIER_RACINE}/${DOSSIER_APP}/${SOUS_DOSSIER_JUSTIFICATIFS}/factures-scannees/${nomFichier}`;
     const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
 
-    console.log("📤 Upload facture OneDrive:", { dateFacture, fournisseur, montantTTC, nomFichier, chemin });
+    console.log("Upload facture OneDrive:", { dateFacture, fournisseur, montantTTC, nomFichier, chemin });
     
     const resp = await appelGraph(url, {
       method: "PUT",
