@@ -296,25 +296,59 @@ function depensesFiltreesImmeuble() {
 }
 
 function renderTotaux() {
-  const deps = depensesFiltreesImmeuble();
-  const totalPayé = deps.filter(d => d.statut === "payé").reduce((s, d) => s + d.montant, 0);
-  const totalNonPayé = deps.filter(d => d.statut === "à payer").reduce((s, d) => s + d.montant, 0);
-  const totalGeneral = deps.reduce((s, d) => s + d.montant, 0);
+  const buildingSelected = el("filterBuilding").value;
+  
+  // Si un immeuble spécifique est sélectionné, afficher total de cet immeuble + total général
+  if (buildingSelected && buildingSelected !== "tous") {
+    const deps = depensesFiltreesImmeuble();
+    const totalGeneral = deps.reduce((s, d) => s + d.montant, 0);
+    
+    totalsRow.innerHTML = `
+      <div class="total-box">
+        <span class="total-label">💰 ${buildingSelected.toUpperCase()}</span>
+        <span class="total-amount">${totalGeneral.toFixed(2)}€</span>
+      </div>
+      <div class="total-box total-box-highlight">
+        <span class="total-label">TOTAL GÉNÉRAL</span>
+        <span class="total-amount">${calculerTotalGeneral().toFixed(2)}€</span>
+      </div>
+    `;
+  } else {
+    // Afficher totaux par Immeuble si vue "tous"
+    const toutesDepenses = donneesDepenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const immeubles = [...new Set(toutesDepenses.map(d => d.immeuble))].sort();
+    
+    let html = "";
+    let totalGeneral = 0;
+    
+    // Totaux par immeuble
+    immeubles.forEach(immeuble => {
+      const total = toutesDepenses
+        .filter(d => d.immeuble === immeuble)
+        .reduce((s, d) => s + d.montant, 0);
+      totalGeneral += total;
+      html += `
+        <div class="total-box">
+          <span class="total-label">${immeuble}</span>
+          <span class="total-amount">${total.toFixed(2)}€</span>
+        </div>
+      `;
+    });
+    
+    // Total général
+    html += `
+      <div class="total-box total-box-highlight">
+        <span class="total-label">TOTAL GÉNÉRAL</span>
+        <span class="total-amount">${totalGeneral.toFixed(2)}€</span>
+      </div>
+    `;
+    
+    totalsRow.innerHTML = html;
+  }
+}
 
-  totalsRow.innerHTML = `
-    <div class="total-box">
-      <span class="total-label">Payé</span>
-      <span class="total-amount">${totalPayé.toFixed(2)}€</span>
-    </div>
-    <div class="total-box">
-      <span class="total-label">À payer</span>
-      <span class="total-amount">${totalNonPayé.toFixed(2)}€</span>
-    </div>
-    <div class="total-box total-box-highlight">
-      <span class="total-label">TOTAL</span>
-      <span class="total-amount">${totalGeneral.toFixed(2)}€</span>
-    </div>
-  `;
+function calculerTotalGeneral() {
+  return donneesDepenses.reduce((s, d) => s + d.montant, 0);
 }
 
 function renderListe() {
@@ -685,12 +719,17 @@ async function soumettreFormulaire(e) {
     depenses.push(depense);
   }
 
-  fermerModal();
   showToast("✓ Dépense enregistrée");
   await sauvegarderDonnees();
   render();
   
-  if (btnSubmit) btnSubmit.disabled = false;
+  // PHASE 3: Afficher bouton "Retour" au lieu de "Enregistrer"
+  if (btnSubmit) {
+    btnSubmit.disabled = false;
+    btnSubmit.style.display = "none";  // Masquer "Enregistrer"
+  }
+  el("btnRetour").style.display = "inline-block";  // Afficher "Retour"
+  el("btnAnnuler").style.display = "none";  // Masquer "Annuler"
 }
 
 async function fileToBase64(file) {
@@ -1101,6 +1140,7 @@ function attachEvents() {
   el("btnNouvelleDepense").addEventListener("click", () => ouvrirModal(null));
   el("btnCloseModal").addEventListener("click", fermerModal);
   el("btnAnnuler").addEventListener("click", fermerModal);
+  el("btnRetour").addEventListener("click", afficherDialogueRetour);
   modalBackdrop.addEventListener("click", fermerModal);
   expenseForm.addEventListener("submit", soumettreFormulaire);
   el("btnSupprimerDepense").addEventListener("click", supprimerDepenseCourante);
@@ -1341,6 +1381,24 @@ async function verifierReprise() {
     } catch (err) {
       el("saveBanner").style.display = "block";
     }
+  }
+}
+
+// ==========================================================
+// PHASE 3: Dialogue de confirmation avant retour
+// ==========================================================
+function afficherDialogueRetour() {
+  const confirmed = confirm("⚠️ Avez-vous enregistré la dépense?\n\nCette action fermera la formulaire. Cliquez OK pour retourner à l'accueil.");
+  
+  if (confirmed) {
+    // Réinitialiser les boutons
+    el("btnEnregistrer").style.display = "inline-block";
+    el("btnRetour").style.display = "none";
+    el("btnAnnuler").style.display = "inline-block";
+    
+    // Fermer la modale et retour à l'accueil
+    fermerModal();
+    render();  // Rafraîchir la liste des dépenses
   }
 }
 
