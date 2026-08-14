@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v44";
+const APP_VERSION = "v46";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -606,11 +606,12 @@ function ouvrirModal(depense) {
   } else {
     el("modalTitle").textContent = "Nouvelle dépense";
     el("fId").value = "";
+    el("fImmeuble").value = filtreImmeuble;  // ← AJOUTER: pré-remplir l'immeuble sélectionné!
+    renderUniteOptions();
     el("fDate").value = new Date().toISOString().slice(0, 10);
     el("fGarantie").checked = false;
     // PHASE 2: Réinitialiser idFacture pour nouvelle dépense
     el("fIdFacture").value = "";
-    renderUniteOptions();
     el("btnSupprimerDepense").style.display = "none";
   }
 
@@ -1137,6 +1138,7 @@ function attachEvents() {
     if (!file) return;
     
     el("fGarantie").checked = true;  // ← COCHER GARANTIE!
+    el("warrantyFields").style.display = "block";  // ← AFFICHER les champs de garantie!
     
     // STOCKER le fichier pour upload ultérieur
     factureGarantieChoisi = file;
