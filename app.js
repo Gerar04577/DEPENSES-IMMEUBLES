@@ -1167,6 +1167,9 @@ function attachEvents() {
     const file = e.target.files[0];
     if (!file) return;
     
+    // STOCKER le fichier pour upload ultérieur
+    factureGarantieChoisi = file;
+    
     showToast("📄 Scan en cours...");
     const scanResult = await callScanFactureWebhook(file);
     
@@ -1195,6 +1198,12 @@ function attachEvents() {
         } else {
           el("fFournisseurGarantie").value = ""; // Laisser blank si pas trouvé
         }
+      }
+      
+      // Générer et pré-remplir ID Facture (COMME NORMAL!)
+      if (scanResult.invoiceId) {
+        el("fIdFacture").value = scanResult.invoiceId;
+        showToast(`✓ ID Facture: ${scanResult.invoiceId}`);
       }
       
       // Afficher résultat
@@ -1229,10 +1238,6 @@ function attachEvents() {
         </div>
       `;
     }
-  });
-
-  el("fFactureGarantie").addEventListener("change", (e) => {
-    factureGarantieChoisi = e.target.files[0] || null;
   });
 
   // PHASE 2: Scanner Facture pour dépenses NORMALES
