@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v46";
+const APP_VERSION = "v48";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -1068,13 +1068,13 @@ function afficherPopupVerification(depense) {
   
   warrantyScanData = depense;
   
-  el("verifyModal").style.display = "block";
-  el("verifyBackdrop").style.display = "block";
+  el("verifyModal").classList.add("open");
+  el("verifyBackdrop").classList.add("open");
 }
 
 function fermerPopupVerification() {
-  el("verifyModal").style.display = "none";
-  el("verifyBackdrop").style.display = "none";
+  el("verifyModal").classList.remove("open");
+  el("verifyBackdrop").classList.remove("open");
   warrantyScanData = null;
 }
 
@@ -1087,9 +1087,7 @@ function attachEventsVerification() {
   el("btnConfirmVerify").addEventListener("click", async () => {
     if (!warrantyScanData) return;
     
-    fermerPopupVerification();
-    
-    // Enregistrer pour vrai
+    // Enregistrer pour vrai AVANT de fermer la popup!
     const depense = warrantyScanData;
     const depenseExistante = depenses.find(d => d.id === depense.id);
     
@@ -1099,6 +1097,7 @@ function attachEventsVerification() {
       depenses.push(depense);
     }
     
+    fermerPopupVerification();  // ← FERMER APRÈS avoir enregistré!
     fermerModal();
     showToast("✓ Garantie enregistrée");
     
