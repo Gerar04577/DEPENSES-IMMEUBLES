@@ -296,16 +296,16 @@ function depensesFiltreesImmeuble() {
 }
 
 function renderTotaux() {
-  const buildingSelected = el("filterBuilding").value;
-  
   // Si un immeuble spécifique est sélectionné, afficher total de cet immeuble + total général
-  if (buildingSelected && buildingSelected !== "tous") {
+  if (filtreImmeuble && filtreImmeuble !== "tous") {
     const deps = depensesFiltreesImmeuble();
     const totalGeneral = deps.reduce((s, d) => s + d.montant, 0);
+    const immeubleObj = IMMEUBLES.find(i => i.id === filtreImmeuble);
+    const immeubleNom = immeubleObj ? immeubleObj.nom : filtreImmeuble;
     
     totalsRow.innerHTML = `
       <div class="total-box">
-        <span class="total-label">💰 ${buildingSelected.toUpperCase()}</span>
+        <span class="total-label">💰 ${immeubleNom}</span>
         <span class="total-amount">${totalGeneral.toFixed(2)}€</span>
       </div>
       <div class="total-box total-box-highlight">
@@ -315,21 +315,24 @@ function renderTotaux() {
     `;
   } else {
     // Afficher totaux par Immeuble si vue "tous"
-    const toutesDepenses = donneesDepenses.sort((a, b) => new Date(b.date) - new Date(a.date));
-    const immeubles = [...new Set(toutesDepenses.map(d => d.immeuble))].sort();
+    const toutesDepenses = [...depenses];
+    const immeubles = [...new Set(toutesDepenses.map(d => d.immeubleId))].sort();
     
     let html = "";
     let totalGeneral = 0;
     
     // Totaux par immeuble
-    immeubles.forEach(immeuble => {
+    immeubles.forEach(immeubleId => {
+      const immeubleObj = IMMEUBLES.find(i => i.id === immeubleId);
+      const immeubleNom = immeubleObj ? immeubleObj.nom : immeubleId;
+      
       const total = toutesDepenses
-        .filter(d => d.immeuble === immeuble)
+        .filter(d => d.immeubleId === immeubleId)
         .reduce((s, d) => s + d.montant, 0);
       totalGeneral += total;
       html += `
         <div class="total-box">
-          <span class="total-label">${immeuble}</span>
+          <span class="total-label">${immeubleNom}</span>
           <span class="total-amount">${total.toFixed(2)}€</span>
         </div>
       `;
@@ -348,7 +351,7 @@ function renderTotaux() {
 }
 
 function calculerTotalGeneral() {
-  return donneesDepenses.reduce((s, d) => s + d.montant, 0);
+  return depenses.reduce((s, d) => s + d.montant, 0);
 }
 
 function renderListe() {
