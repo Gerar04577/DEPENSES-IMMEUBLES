@@ -200,13 +200,16 @@
         <!-- Barre de progression Scan Facture -->
         <div id="scanProgressContainerNormal" style="display:none; margin-top: 12px;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 6px; align-items: center;">
-            <span id="scanProgressLabel">Scan en cours...</span>
-            <span id="scanProgressPercent">0%</span>
+            <span id="scanProgressLabelNormal">Scan en cours...</span>
+            <span id="scanProgressPercentNormal">0%</span>
           </div>
           <div style="width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
-            <div id="scanProgressBar" style="height: 100%; background: #4CAF50; width: 0%; transition: width 0.3s;"></div>
+            <div id="scanProgressBarNormal" style="height: 100%; background: #4CAF50; width: 0%; transition: width 0.3s;"></div>
           </div>
         </div>
+        
+        <!-- Résultat du scan Normal -->
+        <div id="scanResultNormal" style="margin-top: 12px;"></div>
       </div>
 
       <!-- NOUVEAU: Bloc Garantie -->

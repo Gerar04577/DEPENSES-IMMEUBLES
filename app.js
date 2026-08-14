@@ -966,17 +966,36 @@ function showToast(msg) {
 
 // Barre de progression Scan Facture
 function showScanProgress(show) {
-  const container = document.getElementById("scanProgressContainer");
-  if (container) {
-    container.style.display = show ? "block" : "none";
+  // Détecter quel scan est en cours (Normal ou Garantie)
+  const warrantyFields = document.getElementById("warrantyFields");
+  const isWarranty = warrantyFields && warrantyFields.style.display !== "none";
+  
+  const containerWarranty = document.getElementById("scanProgressContainer");
+  const containerNormal = document.getElementById("scanProgressContainerNormal");
+  
+  if (isWarranty) {
+    // Scan Garantie: afficher la barre Garantie
+    if (containerWarranty) containerWarranty.style.display = show ? "block" : "none";
+    if (containerNormal) containerNormal.style.display = "none";
+  } else {
+    // Scan Normal: afficher la barre Normal
+    if (containerNormal) containerNormal.style.display = show ? "block" : "none";
+    if (containerWarranty) containerWarranty.style.display = "none";
   }
 }
 
 function updateScanProgress(percent, label) {
-  const bar = document.getElementById("scanProgressBar");
-  const percentText = document.getElementById("scanProgressPercent");
-  const labelText = document.getElementById("scanProgressLabel");
+  // Chercher les éléments Garantie (priorité)
+  let bar = document.getElementById("scanProgressBar");
+  let percentText = document.getElementById("scanProgressPercent");
+  let labelText = document.getElementById("scanProgressLabel");
   
+  // Si Garantie n'existe pas, chercher Normal
+  if (!bar) bar = document.getElementById("scanProgressBarNormal");
+  if (!percentText) percentText = document.getElementById("scanProgressPercentNormal");
+  if (!labelText) labelText = document.getElementById("scanProgressLabelNormal");
+  
+  // Mettre à jour les éléments trouvés
   if (bar) bar.style.width = percent + "%";
   if (percentText) percentText.textContent = percent + "%";
   if (labelText) labelText.textContent = label;
@@ -1206,7 +1225,28 @@ function attachEvents() {
         showToast(`✓ ID Facture: ${scanResult.invoiceId}`);
       }
       
-      // Afficher résultat
+      // Afficher résultat (message vert avec détails)
+      const resultDiv = el("scanResultNormal");
+      let messageFacture = "";
+      if (onedriveConnecte) {
+        messageFacture = `<br><small style="color: #2f7a55;">✓ Facture sauvegardée automatiquement dans OneDrive</small>`;
+      } else {
+        messageFacture = `<br><small style="color: #d97706;">⚠ Facture non sauvegardée (OneDrive non connecté)</small>`;
+      }
+      
+      resultDiv.innerHTML = `
+        <div style="background: #e4f3ea; padding: 12px; border-radius: 6px; border-left: 3px solid #2f7a55;">
+          <strong>✓ Facture scannée avec succès!</strong><br>
+          <small>Date: ${scanResult.invoiceDate} | Montant: ${scanResult.totalAmount?.toFixed(2) || "?"} € | Fournisseur: ${scanResult.supplierName || "?"}</small>
+          ${messageFacture}
+        </div>
+      `;
+      
+      // Masquer le message vert après 60 secondes
+      setTimeout(() => {
+        resultDiv.innerHTML = "";
+      }, 60000);
+      
       showToast("✓ Données extraites — Vérifier avant enregistrement");
     } else {
       showToast("⚠️ Scan Facture indisponible — Remplis manuellement");
