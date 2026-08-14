@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v41";
+const APP_VERSION = "v42";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -686,28 +686,9 @@ async function soumettreFormulaire(e) {
     }
   }
 
-  // Scan Facture (garantie) — amélioration avec fallback
-  if (depense.garantie && factureGarantieChoisi) {
-    showToast("📄 Lecture facture (Scan Facture)...");
-    try {
-      const dateExtracted = await callScanFactureWebhook(factureGarantieChoisi);
-      if (dateExtracted) {
-        depense.dateDebutGarantie = dateExtracted;
-        // Calculer fin garantie
-        const dateEnd = new Date(dateExtracted);
-        dateEnd.setFullYear(dateEnd.getFullYear() + 2);
-        depense.dateFinGarantie = dateEnd.toISOString().split("T")[0];
-        showToast("✓ Dates garantie calculées automatiquement");
-      } else {
-        console.warn("Scan Facture: pas de date extraite");
-        showToast("⚠️ Scan Facture indisponible — remplis les dates manuellement");
-      }
-    } catch (err) {
-      console.error("Échec Scan Facture webhook:", err.message);
-      showToast("⚠️ Scan Facture indisponible — remplis les dates manuellement");
-    }
-  }
-
+  // Scan Facture déjà fait lors du clic Scanner - données déjà remplies
+  // Pas besoin de re-scanner pendant l'enregistrement!
+  
   // Si c'est une garantie → montrer pop-up de vérification
   if (depense.garantie && depense.dateDebutGarantie) {
     afficherPopupVerification(depense);
@@ -1027,15 +1008,23 @@ function showScanProgress(show) {
 }
 
 function updateScanProgress(percent, label) {
-  // Chercher les éléments Garantie (priorité)
-  let bar = document.getElementById("scanProgressBar");
-  let percentText = document.getElementById("scanProgressPercent");
-  let labelText = document.getElementById("scanProgressLabel");
+  // Détecter quel scan est en cours (Normal ou Garantie) - MÊME détection que showScanProgress!
+  const warrantyFields = document.getElementById("warrantyFields");
+  const isWarranty = warrantyFields && warrantyFields.style.display !== "none";
   
-  // Si Garantie n'existe pas, chercher Normal
-  if (!bar) bar = document.getElementById("scanProgressBarNormal");
-  if (!percentText) percentText = document.getElementById("scanProgressPercentNormal");
-  if (!labelText) labelText = document.getElementById("scanProgressLabelNormal");
+  let bar, percentText, labelText;
+  
+  if (isWarranty) {
+    // Scan Garantie: chercher les éléments Garantie
+    bar = document.getElementById("scanProgressBar");
+    percentText = document.getElementById("scanProgressPercent");
+    labelText = document.getElementById("scanProgressLabel");
+  } else {
+    // Scan Normal: chercher les éléments Normal
+    bar = document.getElementById("scanProgressBarNormal");
+    percentText = document.getElementById("scanProgressPercentNormal");
+    labelText = document.getElementById("scanProgressLabelNormal");
+  }
   
   // Mettre à jour les éléments trouvés
   if (bar) bar.style.width = percent + "%";
