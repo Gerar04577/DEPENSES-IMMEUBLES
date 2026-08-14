@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v43";
+const APP_VERSION = "v44";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -680,8 +680,12 @@ async function soumettreFormulaire(e) {
   }
 
   showToast("✓ Dépense enregistrée");
-  await sauvegarderDonnees();
-  render();
+  
+  try {
+    await sauvegarderDonnees();
+  } finally {
+    render();  // ← APPELER TOUJOURS!
+  }
   
   // PHASE 3: Afficher bouton "Retour" au lieu de "Enregistrer"
   if (btnSubmit) {
@@ -1096,8 +1100,12 @@ function attachEventsVerification() {
     
     fermerModal();
     showToast("✓ Garantie enregistrée");
-    await sauvegarderDonnees();
-    render();
+    
+    try {
+      await sauvegarderDonnees();
+    } finally {
+      render();  // ← APPELER TOUJOURS, même si OneDrive échoue!
+    }
   });
 }
 
