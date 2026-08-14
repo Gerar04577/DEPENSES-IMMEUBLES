@@ -9,7 +9,7 @@
 <title>Dépenses Immeubles</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=42">
+<link rel="stylesheet" href="style.css?v=43">
 </head>
 <body>
 
@@ -181,13 +181,6 @@
         <textarea id="fDescription" class="input" rows="3" placeholder="Détail des travaux effectués..."></textarea>
       </div>
 
-      <div class="field-row">
-        <label for="fJustificatif">Justificatif supplémentaire (photo, devis, autre)</label>
-        <input type="file" id="fJustificatif" accept="application/pdf,image/*" class="input">
-        <div id="justificatifCourant" class="justificatif-courant"></div>
-        <p class="field-hint">Enregistré directement dans OneDrive, dossier DEPENSES-IMMEUBLES/justificatifs. Les factures scannées s'y ajoutent automatiquement.</p>
-      </div>
-
       <!-- PHASE 2: Scanner Facture pour dépenses NORMALES -->
       <div class="field-row">
         <label><strong>📄 Scanner la facture</strong></label>
@@ -306,13 +299,13 @@
 </div>
 
 <footer class="app-footer">
-  <span id="versionLabel">v42</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
+  <span id="versionLabel">v43</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
 </footer>
 
 <!-- Scripts with cache buster query strings - increment version when deploying -->
-<script src="graph-auth.js?v=42"></script>
-<script src="graph-storage.js?v=42"></script>
-<script src="app.js?v=42"></script>
+<script src="graph-auth.js?v=43"></script>
+<script src="graph-storage.js?v=43"></script>
+<script src="app.js?v=43"></script>
 </body>
 </html>
 

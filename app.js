@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v42";
+const APP_VERSION = "v43";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -571,14 +571,11 @@ function renderWarrantyList(garanties, typeList) {
 // ==========================================================
 // Modal / formulaire
 // ==========================================================
-let justificatifChoisi = null;
 let factureGarantieChoisi = null;
 
 function ouvrirModal(depense) {
   expenseForm.reset();
-  justificatifChoisi = null;
   factureGarantieChoisi = null;
-  el("justificatifCourant").innerHTML = "";
   el("warrantyFields").style.display = "none";
   el("newFournisseurField").style.display = "none";
 
@@ -597,11 +594,6 @@ function ouvrirModal(depense) {
     // PHASE 2: Charger l'ID facture lié
     el("fIdFacture").value = depense.idFacture || "";
     el("btnSupprimerDepense").style.display = "inline-block";
-    
-    if (depense.justificatif) {
-      el("justificatifCourant").innerHTML =
-        `Actuel : <a href="${depense.justificatif.webUrl}" target="_blank" rel="noopener">${escapeHtml(depense.justificatif.nom)}</a>`;
-    }
 
     // Remplir les champs de garantie
     if (depense.garantie) {
@@ -661,7 +653,6 @@ async function soumettreFormulaire(e) {
     statut: el("fStatut").value,
     fournisseur: el("fFournisseur").value.trim(),
     description: el("fDescription").value.trim(),
-    justificatif: depenseExistante ? depenseExistante.justificatif : null,
     garantie: el("fGarantie").checked,
     fournisseurGarantie: fournisseurGarantieValue || null,
     dateDebutGarantie: el("fDateDebutGarantie").value || null,
@@ -670,27 +661,12 @@ async function soumettreFormulaire(e) {
     idFacture: el("fIdFacture").value || ""
   };
 
-  // Upload justificatif
-  if (justificatifChoisi) {
-    if (onedriveConnecte && window.GraphStorage) {
-      showToast("Envoi du justificatif...");
-      try {
-        const meta = await GraphStorage.televerserJustificatif(justificatifChoisi, id);
-        depense.justificatif = meta;
-      } catch (err) {
-        console.error("Échec envoi justificatif:", err);
-        showToast("Justificatif non envoyé (connecte-toi à OneDrive)");
-      }
-    } else {
-      showToast("Connecte-toi à OneDrive pour joindre un justificatif");
-    }
-  }
-
   // Scan Facture déjà fait lors du clic Scanner - données déjà remplies
   // Pas besoin de re-scanner pendant l'enregistrement!
   
   // Si c'est une garantie → montrer pop-up de vérification
   if (depense.garantie && depense.dateDebutGarantie) {
+    fermerModal();
     afficherPopupVerification(depense);
     if (btnSubmit) btnSubmit.disabled = false;
     return;
@@ -1137,10 +1113,6 @@ function attachEvents() {
   expenseForm.addEventListener("submit", soumettreFormulaire);
   el("btnSupprimerDepense").addEventListener("click", supprimerDepenseCourante);
 
-  el("fJustificatif").addEventListener("change", (e) => {
-    justificatifChoisi = e.target.files[0] || null;
-  });
-
   // Gestion warranty toggle
   el("fGarantie").addEventListener("change", (e) => {
     el("warrantyFields").style.display = e.target.checked ? "block" : "none";
@@ -1156,6 +1128,8 @@ function attachEvents() {
     const file = e.target.files[0];
     if (!file) return;
     
+    el("fGarantie").checked = true;  // ← COCHER GARANTIE!
+    
     // STOCKER le fichier pour upload ultérieur
     factureGarantieChoisi = file;
     
@@ -1163,10 +1137,10 @@ function attachEvents() {
     const scanResult = await callScanFactureWebhook(file);
     
     if (scanResult) {
-      // Remplir les champs automatiquement
+      // Remplir les champs automatiquement (COMME SCAN NORMAL + DATES GARANTIE!)
       if (scanResult.invoiceDate) {
         el("fDate").value = scanResult.invoiceDate; // Date d'achat
-        el("fDateDebutGarantie").value = scanResult.invoiceDate; // Date début garantie
+        el("fDateDebutGarantie").value = scanResult.invoiceDate; // Date début garantie (= date achat)
         
         // Calculer date fin (+2 ans)
         const dateEnd = new Date(scanResult.invoiceDate);
@@ -1179,14 +1153,7 @@ function attachEvents() {
       }
       
       if (scanResult.supplierName) {
-        // Chercher le fournisseur dans la liste
-        const options = Array.from(el("fFournisseurGarantie").options);
-        const found = options.find(opt => opt.text === scanResult.supplierName);
-        if (found) {
-          el("fFournisseurGarantie").value = found.value;
-        } else {
-          el("fFournisseurGarantie").value = ""; // Laisser blank si pas trouvé
-        }
+        el("fFournisseur").value = scanResult.supplierName; // Champ Normal (pas Garantie!)
       }
       
       // Générer et pré-remplir ID Facture (COMME NORMAL!)
