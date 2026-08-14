@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v38";
+const APP_VERSION = "v40";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -557,6 +557,8 @@ function ouvrirModal(depense) {
     el("fStatut").value = depense.statut;
     el("fFournisseur").value = depense.fournisseur || "";
     el("fDescription").value = depense.description || "";
+    // PHASE 2: Charger l'ID facture lié
+    el("fIdFacture").value = depense.idFacture || "";
     el("btnSupprimerDepense").style.display = "inline-block";
     
     if (depense.justificatif) {
@@ -577,6 +579,8 @@ function ouvrirModal(depense) {
     el("fId").value = "";
     el("fDate").value = new Date().toISOString().slice(0, 10);
     el("fGarantie").checked = false;
+    // PHASE 2: Réinitialiser idFacture pour nouvelle dépense
+    el("fIdFacture").value = "";
     renderUniteOptions();
     el("btnSupprimerDepense").style.display = "none";
   }
@@ -624,7 +628,9 @@ async function soumettreFormulaire(e) {
     garantie: el("fGarantie").checked,
     fournisseurGarantie: fournisseurGarantieValue || null,
     dateDebutGarantie: el("fDateDebutGarantie").value || null,
-    dateFinGarantie: el("fDateFinGarantie").value || null
+    dateFinGarantie: el("fDateFinGarantie").value || null,
+    // PHASE 2: Lier la dépense à sa facture via idFacture
+    idFacture: el("fIdFacture").value || ""
   };
 
   // Upload justificatif
@@ -769,6 +775,14 @@ async function fileToBase64(file) {
   });
 }
 
+// PHASE 2: Générer ID facture unique (FOURNISSEUR-YYYY-MM-DD-NUMERO)
+function genererIdFacture(fournisseur, dateFacture) {
+  const fournisseurNorm = (fournisseur || "UNKNOWN").toUpperCase().replace(/[^A-Z0-9]/g, "").substring(0, 10);
+  const dateStr = dateFacture || new Date().toISOString().split("T")[0];
+  const numero = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+  return `${fournisseurNorm}-${dateStr}-${numero}`;
+}
+
 async function callScanFactureWebhook(file) {
   try {
     console.log("Scan Facture: envoi facture...", file.name);
@@ -850,6 +864,14 @@ async function callScanFactureWebhook(file) {
     // Fournisseur
     if (data.fournisseur && data.fournisseur.value) {
       result.supplierName = data.fournisseur.value;
+    }
+    
+    // PHASE 2: Générer ID facture unique et pré-remplir le formulaire
+    if (result.invoiceDate && result.supplierName) {
+      result.invoiceId = genererIdFacture(result.supplierName, result.invoiceDate);
+      console.log("✓ ID Facture généré:", result.invoiceId);
+      el("fIdFacture").value = result.invoiceId;
+      showToast(`✓ ID Facture: ${result.invoiceId}`);
     }
     
     // Upload facture si extraction OK (sans bloquer)
@@ -1149,6 +1171,46 @@ function attachEvents() {
 
   el("fFactureGarantie").addEventListener("change", (e) => {
     factureGarantieChoisi = e.target.files[0] || null;
+  });
+
+  // PHASE 2: Scanner Facture pour dépenses NORMALES
+  el("btnScanFactureNormal").addEventListener("click", (e) => {
+    e.preventDefault();
+    el("fFactureNormale").click();
+  });
+
+  el("fFactureNormale").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    showToast("📄 Scan en cours...");
+    const scanResult = await callScanFactureWebhook(file);
+    
+    if (scanResult) {
+      // Remplir les champs automatiquement
+      if (scanResult.invoiceDate) {
+        el("fDate").value = scanResult.invoiceDate; // Date d'achat
+      }
+      
+      if (scanResult.totalAmount) {
+        el("fMontant").value = scanResult.totalAmount.toFixed(2);
+      }
+      
+      if (scanResult.supplierName) {
+        el("fFournisseur").value = scanResult.supplierName;
+      }
+      
+      // Générer et pré-remplir ID Facture
+      if (scanResult.invoiceId) {
+        el("fIdFacture").value = scanResult.invoiceId;
+        showToast(`✓ ID Facture: ${scanResult.invoiceId}`);
+      }
+      
+      // Afficher résultat
+      showToast("✓ Données extraites — Vérifier avant enregistrement");
+    } else {
+      showToast("⚠️ Scan Facture indisponible — Remplis manuellement");
+    }
   });
 
   el("fFournisseurGarantie").addEventListener("change", (e) => {

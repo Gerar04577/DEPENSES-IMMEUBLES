@@ -3,7 +3,7 @@
 // Dossier utilisé : "Immobilier 2025-2026/DEPENSES-IMMEUBLES"
 // (dans le dossier partagé, au même niveau que "VeroS" et
 // "GESTION-LOYERS" — voir /areas/veros.md et /areas/loyers-percus-pwa.md)
-// VERSION: v38
+// VERSION: v40
 // ==========================================================
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
@@ -55,23 +55,36 @@ const GraphStorage = (() => {
   }
 
   // ---- Dépenses (fichier JSON unique) ----
+  // ---- Normaliser les dépenses : ajouter champs manquants (idFacture, etc.) ----
+  function normaliserDepenses(depenses) {
+    return depenses.map(d => ({
+      ...d,
+      // PHASE 1: Ajouter idFacture si absent (pour lier facture ↔ garantie)
+      idFacture: d.idFacture || ""
+    }));
+  }
+
   async function chargerDepenses() {
     const chemin = `${DOSSIER_RACINE}/${DOSSIER_APP}/${FICHIER_DONNEES}`;
     const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
     const resp = await appelGraph(url);
     if (resp.status === 404) return [];
     if (!resp.ok) throw new Error(`Échec lecture des dépenses (${resp.status})`);
-    return await resp.json();
+    const data = await resp.json();
+    // Normaliser: s'assurer que tous les champs requis existent
+    return normaliserDepenses(data);
   }
 
   async function sauvegarderDepenses(depenses) {
     await assurerArborescence();
+    // PHASE 1: Normaliser avant sauvegarde (s'assurer que tous champs existent)
+    const depensesNormalisees = normaliserDepenses(depenses);
     const chemin = `${DOSSIER_RACINE}/${DOSSIER_APP}/${FICHIER_DONNEES}`;
     const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
     const resp = await appelGraph(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(depenses, null, 2),
+      body: JSON.stringify(depensesNormalisees, null, 2),
       keepalive: true  // garde la connexion ouverte même si l'app/page se ferme (iOS)
     });
     if (!resp.ok) throw new Error(`Échec sauvegarde des dépenses (${resp.status})`);

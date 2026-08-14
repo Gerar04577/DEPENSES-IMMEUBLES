@@ -9,7 +9,7 @@
 <title>Dépenses Immeubles</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=38">
+<link rel="stylesheet" href="style.css?v=40">
 </head>
 <body>
 
@@ -170,6 +170,12 @@
         <input type="text" id="fFournisseur" class="input" placeholder="Ex. Plomberie Dupont">
       </div>
 
+      <!-- PHASE 2: ID Facture lié au scan -->
+      <div class="field-row">
+        <label for="fIdFacture">ID Facture <span style="color: #999;">(auto-généré lors du scan)</span></label>
+        <input type="text" id="fIdFacture" class="input" placeholder="Vide jusqu'au scan d'une facture" readonly>
+      </div>
+
       <div class="field-row">
         <label for="fDescription">Description</label>
         <textarea id="fDescription" class="input" rows="3" placeholder="Détail des travaux effectués..."></textarea>
@@ -180,6 +186,27 @@
         <input type="file" id="fJustificatif" accept="application/pdf,image/*" class="input">
         <div id="justificatifCourant" class="justificatif-courant"></div>
         <p class="field-hint">Enregistré directement dans OneDrive, dossier DEPENSES-IMMEUBLES/justificatifs.</p>
+      </div>
+
+      <!-- PHASE 2: Scanner Facture pour dépenses NORMALES -->
+      <div class="field-row">
+        <label><strong>📄 Scanner la facture</strong></label>
+        <p class="field-hint">Extrait automatiquement: date d'achat, montant TTC, fournisseur.</p>
+        <button type="button" id="btnScanFactureNormal" class="btn btn-primary" style="margin-top: 8px;">
+          📱 Scanner la facture
+        </button>
+        <input type="file" id="fFactureNormale" accept="application/pdf,image/*" class="input" style="display:none;">
+        
+        <!-- Barre de progression Scan Facture -->
+        <div id="scanProgressContainerNormal" style="display:none; margin-top: 12px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px; align-items: center;">
+            <span id="scanProgressLabel">Scan en cours...</span>
+            <span id="scanProgressPercent">0%</span>
+          </div>
+          <div style="width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
+            <div id="scanProgressBar" style="height: 100%; background: #4CAF50; width: 0%; transition: width 0.3s;"></div>
+          </div>
+        </div>
       </div>
 
       <!-- NOUVEAU: Bloc Garantie -->
@@ -279,9 +306,9 @@
 </footer>
 
 <!-- Scripts with cache buster query strings - increment version when deploying -->
-<script src="graph-auth.js?v=38"></script>
-<script src="graph-storage.js?v=38"></script>
-<script src="app.js?v=38"></script>
+<script src="graph-auth.js?v=40"></script>
+<script src="graph-storage.js?v=40"></script>
+<script src="app.js?v=40"></script>
 </body>
 </html>
 
