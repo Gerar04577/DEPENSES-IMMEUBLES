@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v48";
+const APP_VERSION = "v50";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -288,6 +288,7 @@ function majStatutConnexion(connecte) {
 function render() {
   renderTotaux();
   renderListe();
+  renderWarrantyConsultation();  // ← AJOUTER: Rendre l'onglet Garanties!
 }
 
 function depensesFiltreesImmeuble() {
@@ -1283,14 +1284,6 @@ function attachEvents() {
     }
   });
 
-  el("filterSearch").addEventListener("input", renderListe);
-  el("filterStatut").addEventListener("change", renderListe);
-  el("filterTri").addEventListener("change", renderListe);
-
-  el("filterFournisseur").addEventListener("change", renderWarrantyConsultation);
-  el("filterStudio").addEventListener("change", renderWarrantyConsultation);
-  el("filterStatusGarantie").addEventListener("change", renderWarrantyConsultation);
-
   el("btnConnect").addEventListener("click", async () => {
     if (window.GraphAuth) {
       await GraphAuth.connecter();
@@ -1332,6 +1325,16 @@ function attachEvents() {
       e.returnValue = "";
     }
   });
+  
+  // ← AJOUTER: Event listeners pour les filtres DÉPENSES
+  el("filterSearch").addEventListener("input", render);
+  el("filterStatut").addEventListener("change", render);
+  el("filterTri").addEventListener("change", render);
+  
+  // ← AJOUTER: Event listeners pour les filtres GARANTIES
+  el("filterFournisseur").addEventListener("change", renderWarrantyConsultation);
+  el("filterStudio").addEventListener("change", renderWarrantyConsultation);
+  el("filterStatusGarantie").addEventListener("change", renderWarrantyConsultation);
   
   // Événements du pop-up de vérification
   attachEventsVerification();
