@@ -566,3 +566,112 @@ body{
 .badge-ptg {
   background: #6B4423;
 }
+
+/* v56: Responsive iPhone - Affichage optimisé mobile */
+@media (max-width: 768px) {
+  /* Expense header: empiler verticalement */
+  .expense-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 14px;
+  }
+
+  .expense-unite {
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .expense-date {
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  .expense-montant {
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--ink);
+  }
+
+  .expense-statut {
+    width: fit-content;
+    font-size: 12px;
+  }
+
+  /* Details: réduit sur mobile */
+  .expense-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+
+  .detail-nature,
+  .detail-fournisseur,
+  .detail-desc,
+  .detail-warranty,
+  .detail-justif {
+    font-size: 12px;
+  }
+
+  /* Badges: afficher sur une ligne */
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 6px;
+    margin-right: 4px;
+  }
+
+  /* Totaux: affichage responsive */
+  .totals-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    font-size: 13px;
+  }
+
+  .total-item-value {
+    font-size: 14px;
+  }
+
+  /* Boutons: largeur complète */
+  .btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  /* Recherche: compacte */
+  select {
+    font-size: 14px;
+    padding: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Ultra compact pour petit phone */
+  .expense-header {
+    gap: 4px;
+    font-size: 13px;
+  }
+
+  .expense-montant {
+    font-size: 15px;
+  }
+
+  .expense-details {
+    font-size: 11px;
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 2px 4px;
+  }
+
+  .totals-container {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 8px;
+    font-size: 12px;
+  }
+}

@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v55";
+const APP_VERSION = "v56";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 const WEBHOOK_URL = "https://hook.eu1.make.com/4i6tmoshu6ou5rg98qngyfi3sidq8f0p";  // ← AJOUTER
 
@@ -80,11 +80,21 @@ async function chargerViaWebhook() {
 
 async function sauvegarderViaWebhook(donnees) {
   try {
-    console.log("Sauvegarde dépenses via webhook...");
+    console.log("Sauvegarde dépenses + justificatifs via webhook...");
     
-    // Encoder en base64
+    // Encoder les dépenses en base64
     const json = JSON.stringify(donnees);
     const base64 = btoa(unescape(encodeURIComponent(json)));
+    
+    // Extraire justificatifs pour envoyer séparément
+    const justificatifs = donnees
+      .filter(d => d.justificatif)
+      .map(d => ({
+        idDépense: d.id,
+        nom: d.justificatif.nom,
+        webUrl: d.justificatif.webUrl,
+        mimeType: d.justificatif.mimeType
+      }));
     
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);  // 10s timeout
@@ -94,7 +104,8 @@ async function sauvegarderViaWebhook(donnees) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
         action: "save_depenses",
-        data: base64
+        data: base64,
+        justificatifs: justificatifs
       }),
       signal: controller.signal
     });
@@ -105,7 +116,7 @@ async function sauvegarderViaWebhook(donnees) {
       throw new Error(`Webhook erreur ${response.status}`);
     }
 
-    console.log("✓ Dépenses sauvegardées via webhook");
+    console.log("✓ Dépenses + " + justificatifs.length + " justificatif(s) sauvegardés via webhook");
     return true;
   } catch (err) {
     console.error("❌ Erreur webhook save:", err.message);
@@ -291,7 +302,7 @@ async function chargerDonnees() {
     const data = await chargerViaWebhook();
     depenses = data || [];
     onedriveConnecte = true;
-    majStatutConnexion(true);
+    // majStatutConnexion(true); ← SUPPRIMER: économise crédits Microsoft Graph
     render();
     renderSauvegarde();
     return;
@@ -1479,7 +1490,7 @@ function attachEvents() {
       GraphAuth.deconnecter();
       localStorage.clear();
       sessionStorage.clear();
-      majStatutConnexion(false);
+      // majStatutConnexion(false); ← SUPPRIMER: économise crédits Microsoft Graph
       showToast("Déconnecté. Reconnexion en cours...");
       setTimeout(() => {
         GraphAuth.connecter();
@@ -1644,7 +1655,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (window.GraphAuth) {
     const dejaConnecte = await GraphAuth.initSilencieux();
     if (dejaConnecte) {
-      majStatutConnexion(true);
+      // majStatutConnexion(true); ← SUPPRIMER: économise crédits Microsoft Graph
       await chargerDonnees();
       await verifierReprise();
     }
