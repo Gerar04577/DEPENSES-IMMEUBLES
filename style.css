@@ -541,3 +541,28 @@ body{
 }
 
 /* v11: warranty management + consultation */
+
+/* v55: Badge immeuble par couleur */
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  margin-right: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-biche {
+  background: #8B4513;
+}
+
+.badge-nimy {
+  background: #2E5090;
+}
+
+.badge-ptg {
+  background: #6B4423;
+}
