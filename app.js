@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v54";
+const APP_VERSION = "v55";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 const WEBHOOK_URL = "https://hook.eu1.make.com/4i6tmoshu6ou5rg98qngyfi3sidq8f0p";  // ← AJOUTER
 
@@ -469,9 +469,10 @@ function renderListe() {
     itemDiv.className = "expense-item";
     const dateObj = new Date(dep.date + "T00:00:00");
     const dateFormatted = dateObj.toLocaleDateString("fr-BE");
+    const badgeHtml = `<span class="badge badge-${dep.immeuble.toLowerCase()}">[${escapeHtml(dep.immeuble)}]</span>`;
     itemDiv.innerHTML = `
       <div class="expense-header">
-        <span class="expense-unite">${escapeHtml(dep.unite)}</span>
+        <span class="expense-unite">${badgeHtml} ${escapeHtml(dep.unite)}</span>
         <span class="expense-date">${dateFormatted}</span>
         <span class="expense-montant">${dep.montant.toFixed(2)}€</span>
         <span class="expense-statut ${dep.statut === "payé" ? "statut-paye" : "statut-impaye"}">
