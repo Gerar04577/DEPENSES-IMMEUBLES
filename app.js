@@ -3,8 +3,9 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v51";
+const APP_VERSION = "v54";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
+const WEBHOOK_URL = "https://hook.eu1.make.com/4i6tmoshu6ou5rg98qngyfi3sidq8f0p";  // ← AJOUTER
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
 const IMMEUBLES = [
@@ -38,6 +39,79 @@ const FOURNISSEURS_DEFAULTS = [
   "ELDI","ACTION","BRICO PLAN IT","LIDL","MEDIAMARKT","EXTRA","KRËFE",
   "Leroy Merlin","Brico Dépôt"
 ];
+
+// ==========================================================
+// Fonctions Webhook Make.com
+// ==========================================================
+async function chargerViaWebhook() {
+  try {
+    console.log("Chargement dépenses via webhook...");
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);  // 10s timeout
+    
+    const response = await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "import_depenses" }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      throw new Error(`Webhook erreur ${response.status}`);
+    }
+
+    const text = await response.text();
+    console.log("Réponse webhook reçue, décodage...");
+    
+    // Décoder le base64
+    const decoded = decodeURIComponent(escape(atob(text)));
+    const data = JSON.parse(decoded);
+    
+    console.log("✓ Dépenses chargées via webhook:", data.length, "items");
+    return data;
+  } catch (err) {
+    console.error("❌ Erreur webhook import:", err.message);
+    throw err;
+  }
+}
+
+async function sauvegarderViaWebhook(donnees) {
+  try {
+    console.log("Sauvegarde dépenses via webhook...");
+    
+    // Encoder en base64
+    const json = JSON.stringify(donnees);
+    const base64 = btoa(unescape(encodeURIComponent(json)));
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);  // 10s timeout
+    
+    const response = await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        action: "save_depenses",
+        data: base64
+      }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      throw new Error(`Webhook erreur ${response.status}`);
+    }
+
+    console.log("✓ Dépenses sauvegardées via webhook");
+    return true;
+  } catch (err) {
+    console.error("❌ Erreur webhook save:", err.message);
+    throw err;
+  }
+}
 
 // ---- État en mémoire ----
 let depenses = [];
@@ -212,18 +286,20 @@ async function chargerDonnees() {
     el("lastSaveLabel").textContent = "OneDrive confirmé " + lastSave;
   }
 
-  if (window.GraphAuth && GraphAuth.estConnecte()) {
-    try {
-      const data = await GraphStorage.chargerDepenses();
-      depenses = data || [];
-      onedriveConnecte = true;
-      majStatutConnexion(true);
-      render();
-      return;
-    } catch (err) {
-      console.error("Échec lecture OneDrive, repli local:", err);
-    }
+  // Charger via webhook Make.com
+  try {
+    const data = await chargerViaWebhook();
+    depenses = data || [];
+    onedriveConnecte = true;
+    majStatutConnexion(true);
+    render();
+    renderSauvegarde();
+    return;
+  } catch (err) {
+    console.error("Échec webhook import, repli local:", err);
   }
+  
+  // Fallback: charger depuis localStorage
   const brut = localStorage.getItem("depenses-immeubles-data");
   depenses = brut ? JSON.parse(brut) : [];
   render();
@@ -234,31 +310,29 @@ async function sauvegarderDonnees() {
   const ts = new Date().toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   el("lastSaveLabel").textContent = "sauvegardé localement " + ts;
 
-  if (onedriveConnecte && window.GraphStorage) {
-    marquerTentativeEnvoi();
-    try {
-      await GraphStorage.sauvegarderDepenses(depenses);
-      el("lastSaveLabel").textContent = "OneDrive confirmé " + ts;
-      localStorage.setItem("depenses-immeubles-last-save", ts);
-      el("saveBanner").style.display = "none";
-      localStorage.removeItem("depenses-immeubles-tentative-envoi");
-      showToast("✓ Sauvegardé sur OneDrive");
-      
-      if (el("saveReminder").style.display === "flex") {
-        el("saveReminder").style.display = "none";
-        setTimeout(() => {
-          if (el("saveReminder").style.display === "none") {
-            el("saveReminder").style.display = "flex";
-          }
-        }, 5000);
-      }
-    } catch (err) {
-      console.error("Échec sauvegarde OneDrive:", err);
-      el("saveBanner").style.display = "block";
-      showToast("⚠️ Erreur sauvegarde OneDrive");
-    }
-  } else {
+  // Sauvegarder via webhook Make.com
+  marquerTentativeEnvoi();
+  try {
+    await sauvegarderViaWebhook(depenses);
+    el("lastSaveLabel").textContent = "OneDrive confirmé " + ts;
     localStorage.setItem("depenses-immeubles-last-save", ts);
+    el("saveBanner").style.display = "none";
+    localStorage.removeItem("depenses-immeubles-tentative-envoi");
+    showToast("✓ Sauvegardé sur OneDrive");
+    renderSauvegarde();
+    
+    if (el("saveReminder").style.display === "flex") {
+      el("saveReminder").style.display = "none";
+      setTimeout(() => {
+        if (el("saveReminder").style.display === "none") {
+          el("saveReminder").style.display = "flex";
+        }
+      }, 5000);
+    }
+  } catch (err) {
+    console.error("Échec sauvegarde webhook:", err);
+    el("saveBanner").style.display = "block";
+    showToast("⚠️ Erreur sauvegarde webhook");
   }
 }
 
@@ -295,7 +369,8 @@ function render() {
   renderTotaux();
   renderListe();
   renderWarrantyConsultation();
-  renderRecherche();  // ← AJOUTER: Rendre l'onglet Recherche!
+  renderRecherche();
+  renderSauvegarde();  // ← AJOUTER: Module Sauvegarde
 }
 
 function depensesFiltreesImmeuble() {
@@ -658,6 +733,21 @@ function remplirFiltresRecherche() {
       opt.textContent = f;
       fournisseurSelect.appendChild(opt);
     });
+  }
+}
+
+// ==========================================================
+// MODULE: Sauvegarde & synchronisation
+// ==========================================================
+function renderSauvegarde() {
+  // Afficher le timestamp de dernière sauvegarde
+  const lastSave = localStorage.getItem("depenses-immeubles-last-save");
+  const lastSaveEl = el("lastSaveTime");
+  
+  if (lastSave) {
+    lastSaveEl.textContent = "☁️ Sauvegardé automatiquement le " + lastSave;
+  } else {
+    lastSaveEl.textContent = "⏳ En attente de première sauvegarde";
   }
 }
 
@@ -1407,6 +1497,70 @@ function attachEvents() {
     }
     btn.disabled = false;
     btn.textContent = "💾 Enregistrer maintenant";
+  });
+
+  // ← AJOUTER: Buttons du MODULE Sauvegarde
+  el("btnSaveManualOneDrive").addEventListener("click", async () => {
+    const btn = el("btnSaveManualOneDrive");
+    btn.disabled = true;
+    btn.textContent = "Préparation...";
+    try {
+      // Export via Share Sheet iOS (OneDrive)
+      const data = JSON.stringify(depenses, null, 2);
+      const blob = new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "depenses-immeubles.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast("✓ Fichier prêt pour partage");
+    } catch (err) {
+      showToast("✗ Erreur préparation fichier");
+      console.error(err);
+    }
+    btn.disabled = false;
+    btn.textContent = "⬇️ Sauvegarde manuelle OneDrive";
+  });
+
+  el("btnSaveAutoOneDrive").addEventListener("click", async () => {
+    const btn = el("btnSaveAutoOneDrive");
+    btn.disabled = true;
+    btn.textContent = "Sauvegarde...";
+    try {
+      await sauvegarderDonnees();
+      showToast("✓ Sauvegardé sur OneDrive");
+    } catch (err) {
+      showToast("✗ Erreur sauvegarde");
+      console.error(err);
+    }
+    btn.disabled = false;
+    btn.textContent = "☁️ Sauvegarde automatique OneDrive";
+  });
+
+  el("btnImportFile").addEventListener("click", () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (e) => {
+      try {
+        const file = e.target.files[0];
+        const text = await file.text();
+        const imported = JSON.parse(text);
+        depenses = imported;
+        localStorage.setItem("depenses-immeubles-data", JSON.stringify(depenses));
+        const ts = new Date().toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" });
+        localStorage.setItem("depenses-immeubles-last-save", ts);
+        render();
+        showToast("✓ Données importées");
+      } catch (err) {
+        showToast("✗ Erreur import fichier");
+        console.error(err);
+      }
+    };
+    input.click();
   });
 
   el("btnCloseSaveReminder").addEventListener("click", fermerBanniere);
