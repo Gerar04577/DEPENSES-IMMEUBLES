@@ -469,7 +469,8 @@ function renderListe() {
     itemDiv.className = "expense-item";
     const dateObj = new Date(dep.date + "T00:00:00");
     const dateFormatted = dateObj.toLocaleDateString("fr-BE");
-    const badgeHtml = `<span class="badge badge-${dep.immeuble.toLowerCase()}">[${escapeHtml(dep.immeuble)}]</span>`;
+    const immeubleValue = (dep.immeuble && dep.immeuble.trim()) ? dep.immeuble : "";
+    const badgeHtml = immeubleValue ? `<span class="badge badge-${immeubleValue.toLowerCase()}">[${escapeHtml(immeubleValue)}]</span>` : "";
     itemDiv.innerHTML = `
       <div class="expense-header">
         <span class="expense-unite">${badgeHtml} ${escapeHtml(dep.unite)}</span>
