@@ -9,7 +9,7 @@
 <title>Dépenses Immeubles</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=50">
+<link rel="stylesheet" href="style.css?v=51">
 </head>
 <body>
 
@@ -32,7 +32,8 @@
   <nav class="tabs" id="buildingTabs" aria-label="Immeubles">
     <button class="tab active" data-immeuble="tous">Tous</button>
     <!-- généré en JS -->
-    <button class="tab" id="tabGaranties" data-view="garanties" style="margin-left: auto; background: linear-gradient(135deg, #ffd700, #ffed4e); color: #333; font-weight: bold;">📋 Garanties</button>
+    <button class="tab" id="tabRecherche" data-view="recherche" style="margin-left: auto; background: linear-gradient(135deg, #87ceeb, #b0e0e6); color: #333; font-weight: bold;">🔍 Recherche</button>
+    <button class="tab" id="tabGaranties" data-view="garanties" style="background: linear-gradient(135deg, #ffd700, #ffed4e); color: #333; font-weight: bold;">📋 Garanties</button>
   </nav>
 </header>
 
@@ -48,7 +49,6 @@
       <button id="btnEnregistrerMaintenant" class="btn btn-primary" title="Enregistrer toutes les dépenses sur OneDrive">💾 Enregistrer maintenant</button>
     </div>
     <div class="filters">
-      <input type="text" id="filterSearch" placeholder="Rechercher (unité, nature, fournisseur...)" class="input">
       <select id="filterStatut" class="input">
         <option value="tous">Tous statuts</option>
         <option value="payé">Payé</option>
@@ -66,6 +66,32 @@
   <section class="panel" id="expenseListPanel">
     <div id="expenseList" class="expense-list">
       <p class="empty-state">Aucune dépense enregistrée pour l'instant. Ajoute la première avec le bouton ci-dessus.</p>
+    </div>
+  </section>
+
+  <!-- Page Recherche par menu déroulant -->
+  <section class="panel" id="searchPagePanel" style="display:none;">
+    <h2 style="margin: 0 0 16px 0;">🔍 Recherche par Filtres</h2>
+    
+    <div class="filters" style="margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+      <select id="searchFilterImmeuble" class="input">
+        <option value="">Tous les immeubles</option>
+      </select>
+      <select id="searchFilterStudio" class="input">
+        <option value="">Tous les studios</option>
+      </select>
+      <select id="searchFilterFournisseur" class="input">
+        <option value="">Tous les fournisseurs</option>
+      </select>
+      <select id="searchFilterStatut" class="input">
+        <option value="">Tous les statuts</option>
+        <option value="payé">✓ Payé</option>
+        <option value="à payer">⏳ À payer</option>
+      </select>
+    </div>
+
+    <div id="searchResults" style="margin-top: 16px;">
+      <div id="searchResultsList"></div>
     </div>
   </section>
 
@@ -299,13 +325,13 @@
 </div>
 
 <footer class="app-footer">
-  <span id="versionLabel">v50</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
+  <span id="versionLabel">v51</span> · <span id="lastSaveLabel">jamais sauvegardé</span>
 </footer>
 
 <!-- Scripts with cache buster query strings - increment version when deploying -->
-<script src="graph-auth.js?v=50"></script>
-<script src="graph-storage.js?v=50"></script>
-<script src="app.js?v=50"></script>
+<script src="graph-auth.js?v=51"></script>
+<script src="graph-storage.js?v=51"></script>
+<script src="app.js?v=51"></script>
 </body>
 </html>
 

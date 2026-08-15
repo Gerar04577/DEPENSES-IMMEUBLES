@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v50";
+const APP_VERSION = "v51";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 
 // ---- Référentiel des 7 immeubles et de leurs unités ----
@@ -94,6 +94,8 @@ function renderBuildingTabs() {
     if (!btn) return;
     if (btn.dataset.view === "garanties") {
       switchView("garanties");
+    } else if (btn.dataset.view === "recherche") {  // ← AJOUTER
+      switchView("recherche");
     } else {
       document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
       btn.classList.add("active");
@@ -107,6 +109,7 @@ function switchView(view) {
   currentView = view;
   el("expenseListPanel").style.display = view === "depenses" ? "block" : "none";
   el("warrantyPagePanel").style.display = view === "garanties" ? "block" : "none";
+  el("searchPagePanel").style.display = view === "recherche" ? "block" : "none";  // ← AJOUTER
   el("totalsPanel").style.display = view === "depenses" ? "block" : "none";
   el("actionsPanel").style.display = view === "depenses" ? "block" : "none";
   
@@ -114,6 +117,9 @@ function switchView(view) {
   if (view === "garanties") {
     el("tabGaranties").classList.add("active");
     renderWarrantyConsultation();
+  } else if (view === "recherche") {  // ← AJOUTER
+    el("tabRecherche").classList.add("active");
+    renderRecherche();
   } else {
     document.querySelectorAll(".tab:not([data-view])").forEach(t => {
       if (t.dataset.immeuble === filtreImmeuble) t.classList.add("active");
@@ -288,7 +294,8 @@ function majStatutConnexion(connecte) {
 function render() {
   renderTotaux();
   renderListe();
-  renderWarrantyConsultation();  // ← AJOUTER: Rendre l'onglet Garanties!
+  renderWarrantyConsultation();
+  renderRecherche();  // ← AJOUTER: Rendre l'onglet Recherche!
 }
 
 function depensesFiltreesImmeuble() {
@@ -356,20 +363,10 @@ function calculerTotalGeneral() {
 }
 
 function renderListe() {
-  const searchTxt = el("filterSearch").value.toLowerCase();
   const filtreStatut = el("filterStatut").value;
   const triOption = el("filterTri").value;
 
   let deps = depensesFiltreesImmeuble();
-
-  if (searchTxt) {
-    deps = deps.filter(d =>
-      d.unite.toLowerCase().includes(searchTxt) ||
-      d.nature.toLowerCase().includes(searchTxt) ||
-      (d.fournisseur && d.fournisseur.toLowerCase().includes(searchTxt)) ||
-      (d.description && d.description.toLowerCase().includes(searchTxt))
-    );
-  }
 
   if (filtreStatut !== "tous") {
     deps = deps.filter(d => d.statut === filtreStatut);
@@ -567,6 +564,101 @@ function renderWarrantyList(garanties, typeList) {
     `;
     container.appendChild(itemDiv);
   });
+}
+
+// ==========================================================
+// Recherche par menu déroulant
+// ==========================================================
+function renderRecherche() {
+  const searchImmeuble = el("searchFilterImmeuble").value;
+  const searchStudio = el("searchFilterStudio").value;
+  const searchFournisseur = el("searchFilterFournisseur").value;
+  const searchStatut = el("searchFilterStatut").value;
+
+  // Pré-remplir les dropdowns
+  remplirFiltresRecherche();
+
+  // Filtrer les dépenses
+  let resultats = depenses;
+
+  if (searchImmeuble) {
+    resultats = resultats.filter(d => d.immeubleId === searchImmeuble);
+  }
+  if (searchStudio) {
+    resultats = resultats.filter(d => d.unite === searchStudio);
+  }
+  if (searchFournisseur) {
+    resultats = resultats.filter(d => d.fournisseur === searchFournisseur);
+  }
+  if (searchStatut) {
+    resultats = resultats.filter(d => d.statut === searchStatut);
+  }
+
+  // Afficher résultats
+  const container = el("searchResultsList");
+  container.innerHTML = "";
+
+  if (resultats.length === 0) {
+    container.innerHTML = `<p style="color: #999; text-align: center;">Aucun résultat</p>`;
+    return;
+  }
+
+  resultats.forEach(d => {
+    const immeubleObj = IMMEUBLES.find(i => i.id === d.immeubleId);
+    const immeubleNom = immeubleObj ? immeubleObj.nom : d.immeubleId;
+    const statusDisplay = d.statut === "payé" ? "✓ Payé" : "⏳ À payer";
+    const garantieDisplay = d.garantie ? "☑ Garantie" : "";
+
+    const itemDiv = document.createElement("div");
+    itemDiv.style.cssText = "padding: 12px; margin-bottom: 8px; background: #f5f5f5; border-radius: 8px; border-left: 4px solid #8b6f47;";
+    itemDiv.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 4px;">${immeubleNom} - ${d.unite}</div>
+      <div style="font-size: 0.9em; color: #666;">
+        ${d.nature} | ${d.montant.toFixed(2)}€ | ${statusDisplay} ${garantieDisplay}
+      </div>
+      <div style="font-size: 0.85em; color: #999;">
+        ${d.fournisseur || "N/A"} | ${d.date}
+      </div>
+    `;
+    container.appendChild(itemDiv);
+  });
+}
+
+function remplirFiltresRecherche() {
+  // Immeubles
+  const immeubleSelect = el("searchFilterImmeuble");
+  if (immeubleSelect.children.length === 1) {  // Seulement option par défaut
+    IMMEUBLES.forEach(i => {
+      const opt = document.createElement("option");
+      opt.value = i.id;
+      opt.textContent = i.nom;
+      immeubleSelect.appendChild(opt);
+    });
+  }
+
+  // Studios
+  const studios = [...new Set(depenses.map(d => d.unite))].filter(Boolean);
+  const studioSelect = el("searchFilterStudio");
+  if (studioSelect.children.length === 1) {
+    studios.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s;
+      opt.textContent = s;
+      studioSelect.appendChild(opt);
+    });
+  }
+
+  // Fournisseurs
+  const fournisseurs = [...new Set(depenses.map(d => d.fournisseur))].filter(Boolean);
+  const fournisseurSelect = el("searchFilterFournisseur");
+  if (fournisseurSelect.children.length === 1) {
+    fournisseurs.forEach(f => {
+      const opt = document.createElement("option");
+      opt.value = f;
+      opt.textContent = f;
+      fournisseurSelect.appendChild(opt);
+    });
+  }
 }
 
 // ==========================================================
@@ -1327,9 +1419,14 @@ function attachEvents() {
   });
   
   // ← AJOUTER: Event listeners pour les filtres DÉPENSES
-  el("filterSearch").addEventListener("input", render);
   el("filterStatut").addEventListener("change", render);
   el("filterTri").addEventListener("change", render);
+  
+  // ← AJOUTER: Event listeners pour les filtres RECHERCHE
+  el("searchFilterImmeuble").addEventListener("change", renderRecherche);
+  el("searchFilterStudio").addEventListener("change", renderRecherche);
+  el("searchFilterFournisseur").addEventListener("change", renderRecherche);
+  el("searchFilterStatut").addEventListener("change", renderRecherche);
   
   // ← AJOUTER: Event listeners pour les filtres GARANTIES
   el("filterFournisseur").addEventListener("change", renderWarrantyConsultation);
