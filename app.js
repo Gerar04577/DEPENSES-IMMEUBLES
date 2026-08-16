@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v57";
+const APP_VERSION = "v58";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 const WEBHOOK_URL = "https://hook.eu1.make.com/4i6tmoshu6ou5rg98qngyfi3sidq8f0p";  // ← AJOUTER
 
@@ -78,7 +78,7 @@ async function chargerViaWebhook() {
   }
 }
 
-async function sauvegarderViaWebhook(donnees) {
+async function sauvegarderViaWebhook(donnees, justificatifAEnvoyer) {
   try {
     console.log("Sauvegarde dépenses + justificatifs via webhook...");
     
@@ -86,18 +86,11 @@ async function sauvegarderViaWebhook(donnees) {
     const json = JSON.stringify(donnees);
     const base64 = btoa(unescape(encodeURIComponent(json)));
     
-    // Extraire justificatifs pour envoyer séparément
-    const justificatifs = donnees
-      .filter(d => d.justificatif)
-      .map(d => ({
-        idDépense: d.id,
-        nom: d.justificatif.nom,
-        webUrl: d.justificatif.webUrl,
-        mimeType: d.justificatif.mimeType
-      }));
+    // Justificatif à uploader (module 6 Make.com) — un seul par sauvegarde, celui qui vient d'être scanné/attaché
+    const justificatifs = justificatifAEnvoyer ? [justificatifAEnvoyer] : [];
     
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);  // 10s timeout
+    const timeout = setTimeout(() => controller.abort(), 30000);  // 30s (le fichier base64 alourdit la requête)
     
     const response = await fetch(WEBHOOK_URL, {
       method: "POST",
@@ -132,6 +125,8 @@ let onedriveConnecte = false;
 let timerBanniere = null;
 let reminderVisible = false;
 let fournisseursPersos = []; // fournisseurs custom (localStorage)
+let justificatifEnAttente = null; // { fileBase64, mimeType, nom } — facture scannée, en attente d'enregistrement via Make.com
+let justificatifPourEnvoiWebhook = null; // justificatif finalisé pour le prochain appel sauvegarderDonnees() (survit au popup de vérification garantie)
 
 // ---- Éléments DOM ----
 const el = (id) => document.getElementById(id);
@@ -324,7 +319,8 @@ async function sauvegarderDonnees() {
   // Sauvegarder via webhook Make.com
   marquerTentativeEnvoi();
   try {
-    await sauvegarderViaWebhook(depenses);
+    await sauvegarderViaWebhook(depenses, justificatifPourEnvoiWebhook);
+    justificatifPourEnvoiWebhook = null; // consommé, ne pas ré-envoyer à la prochaine sauvegarde
     el("lastSaveLabel").textContent = "OneDrive confirmé " + ts;
     localStorage.setItem("depenses-immeubles-last-save", ts);
     el("saveBanner").style.display = "none";
@@ -772,6 +768,7 @@ let factureGarantieChoisi = null;
 function ouvrirModal(depense) {
   expenseForm.reset();
   factureGarantieChoisi = null;
+  justificatifEnAttente = null;
   el("warrantyFields").style.display = "none";
   el("newFournisseurField").style.display = "none";
 
@@ -855,8 +852,18 @@ async function soumettreFormulaire(e) {
     dateDebutGarantie: el("fDateDebutGarantie").value || null,
     dateFinGarantie: el("fDateFinGarantie").value || null,
     // PHASE 2: Lier la dépense à sa facture via idFacture
-    idFacture: el("fIdFacture").value || ""
+    idFacture: el("fIdFacture").value || "",
+    // Justificatif (métadonnée légère seulement — le fichier est envoyé séparément, une fois, vers OneDrive via Make.com)
+    justificatif: justificatifEnAttente
+      ? { nom: justificatifEnAttente.nom, mimeType: justificatifEnAttente.mimeType }
+      : (depenseExistante ? depenseExistante.justificatif : null) || null
   };
+
+  // Justificatif en attente d'envoi (contenu réel du fichier) — séparé de l'objet dépense, envoyé une seule fois
+  justificatifPourEnvoiWebhook = justificatifEnAttente
+    ? { idDépense: id, nom: justificatifEnAttente.nom, mimeType: justificatifEnAttente.mimeType, fileBase64: justificatifEnAttente.fileBase64 }
+    : null;
+  justificatifEnAttente = null; // consommé
 
   // Scan Facture déjà fait lors du clic Scanner - données déjà remplies
   // Pas besoin de re-scanner pendant l'enregistrement!
@@ -1074,45 +1081,31 @@ async function callScanFactureWebhook(file) {
       showToast(`✓ ID Facture: ${result.invoiceId}`);
     }
     
-    // Upload facture si extraction OK (sans bloquer)
-    console.log("🔍 Avant upload check:", { 
+    // Préparer le justificatif (sera envoyé via Make.com à l'enregistrement — plus d'upload direct Graph)
+    console.log("🔍 Avant préparation justificatif:", { 
       invoiceDate: !!result.invoiceDate, 
-      file: !!file, 
-      onedriveConnecte, 
-      GraphStorage: !!window.GraphStorage 
+      file: !!file
     });
     
-    if (result.invoiceDate && file && onedriveConnecte && window.GraphStorage) {
-      console.log("✓ Upload check PASSED - tentative upload...");
+    if (result.invoiceDate && file) {
+      console.log("✓ Préparation justificatif...");
       try {
-        const fileData = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            console.log("✓ FileReader OK, size:", reader.result.byteLength);
-            resolve(reader.result);
-          };
-          reader.onerror = () => reject(new Error("Impossible de lire"));
-          reader.readAsArrayBuffer(file);
-        });
         const extension = file.name.split('.').pop() || 'pdf';
-        console.log("📤 Appel GraphStorage.sauvegarderFactureScannee...");
-        await GraphStorage.sauvegarderFactureScannee(
-          fileData, `facture.${extension}`, result.invoiceDate, result.supplierName, result.totalAmount
-        );
-        console.log("✓✓✓ Upload réussi!");
-        showToast("✓ Facture sauvegardée dans OneDrive");
+        const montantStr = result.totalAmount ? result.totalAmount.toString().replace(".", ",") : "0";
+        const fournisseurNom = (result.supplierName || "UNKNOWN").toUpperCase().replace(/[\\/:*?"<>|€]/g, "_");
+        const nomFichier = `${result.invoiceDate}_${fournisseurNom}_${montantStr}_EUR.${extension}`;
+        justificatifEnAttente = { fileBase64: imageBase64, mimeType, nom: nomFichier };
+        console.log("✓✓✓ Justificatif prêt:", nomFichier);
+        showToast("✓ Facture prête — sauvegardée dans OneDrive à l'enregistrement");
       } catch (err) {
-        console.error("❌ ERREUR UPLOAD FACTURE:", err.message, err);
-        // NE PAS afficher le message "sauvegardée" - l'upload a échoué!
-        showToast(`❌ ERREUR: Facture non sauvegardée (${err.message})`);
+        console.error("❌ ERREUR PRÉPARATION FACTURE:", err.message, err);
+        showToast(`❌ ERREUR: Facture non préparée (${err.message})`);
       }
     } else {
-      console.log("❌ Upload check FAILED - pas d'upload");
-      let raison = "❌ Upload ÉCHOUÉ: ";
+      console.log("❌ Préparation FAILED - pas de justificatif");
+      let raison = "❌ Préparation ÉCHOUÉE: ";
       if (!result.invoiceDate) raison += "Date manquante ";
       if (!file) raison += "Fichier manquant ";
-      if (!onedriveConnecte) raison += "OneDrive déconnecté ";
-      if (!window.GraphStorage) raison += "GraphStorage indisponible";
       showToast(raison);
       
       // AFFICHER la structure EXACTE reçue pour déboguer
@@ -1369,12 +1362,9 @@ function attachEvents() {
       
       // Afficher résultat
       const resultDiv = el("scanResultWarranty");
-      let messageFacture = "";
-      if (onedriveConnecte) {
-        messageFacture = `<br><small style="color: #2f7a55;">✓ Facture sauvegardée automatiquement dans OneDrive</small>`;
-      } else {
-        messageFacture = `<br><small style="color: #d97706;">⚠ Facture non sauvegardée (OneDrive non connecté)</small>`;
-      }
+      const messageFacture = justificatifEnAttente
+        ? `<br><small style="color: #2f7a55;">✓ Facture prête — sera sauvegardée dans OneDrive à l'enregistrement</small>`
+        : `<br><small style="color: #d97706;">⚠ Facture non préparée</small>`;
       
       resultDiv.innerHTML = `
         <div style="background: #e4f3ea; padding: 12px; border-radius: 6px; border-left: 3px solid #2f7a55;">
@@ -1436,12 +1426,9 @@ function attachEvents() {
       
       // Afficher résultat (message vert avec détails)
       const resultDiv = el("scanResultNormal");
-      let messageFacture = "";
-      if (onedriveConnecte) {
-        messageFacture = `<br><small style="color: #2f7a55;">✓ Facture sauvegardée automatiquement dans OneDrive</small>`;
-      } else {
-        messageFacture = `<br><small style="color: #d97706;">⚠ Facture non sauvegardée (OneDrive non connecté)</small>`;
-      }
+      const messageFacture = justificatifEnAttente
+        ? `<br><small style="color: #2f7a55;">✓ Facture prête — sera sauvegardée dans OneDrive à l'enregistrement</small>`
+        : `<br><small style="color: #d97706;">⚠ Facture non préparée</small>`;
       
       resultDiv.innerHTML = `
         <div style="background: #e4f3ea; padding: 12px; border-radius: 6px; border-left: 3px solid #2f7a55;">
@@ -1490,7 +1477,7 @@ function attachEvents() {
       GraphAuth.deconnecter();
       localStorage.clear();
       sessionStorage.clear();
-      // majStatutConnexion(false); ← SUPPRIMER: économise crédits Microsoft Graph
+      majStatutConnexion(false);
       showToast("Déconnecté. Reconnexion en cours...");
       setTimeout(() => {
         GraphAuth.connecter();
@@ -1655,7 +1642,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (window.GraphAuth) {
     const dejaConnecte = await GraphAuth.initSilencieux();
     if (dejaConnecte) {
-      // majStatutConnexion(true); ← SUPPRIMER: économise crédits Microsoft Graph
+      majStatutConnexion(true);
       await chargerDonnees();
       await verifierReprise();
     }
