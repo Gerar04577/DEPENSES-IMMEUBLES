@@ -624,7 +624,7 @@ body{
   }
 
   /* Totaux: affichage responsive */
-  .totals-container {
+  #totalsRow {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 12px;
@@ -669,7 +669,7 @@ body{
     padding: 2px 4px;
   }
 
-  .totals-container {
+  #totalsRow {
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     gap: 8px;
     font-size: 12px;

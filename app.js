@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v58";
+const APP_VERSION = "v59";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 const WEBHOOK_URL = "https://hook.eu1.make.com/4i6tmoshu6ou5rg98qngyfi3sidq8f0p";  // ← AJOUTER
 
@@ -476,8 +476,9 @@ function renderListe() {
     itemDiv.className = "expense-item";
     const dateObj = new Date(dep.date + "T00:00:00");
     const dateFormatted = dateObj.toLocaleDateString("fr-BE");
-    const immeubleValue = (dep.immeuble && dep.immeuble.trim()) ? dep.immeuble : "";
-    const badgeHtml = immeubleValue ? `<span class="badge badge-${immeubleValue.toLowerCase()}">[${escapeHtml(immeubleValue)}]</span>` : "";
+    const immeubleObj = IMMEUBLES.find(i => i.id === dep.immeubleId);
+    const immeubleValue = immeubleObj ? immeubleObj.nom : "";
+    const badgeHtml = immeubleValue ? `<span class="badge badge-${dep.immeubleId}">[${escapeHtml(immeubleValue)}]</span>` : "";
     itemDiv.innerHTML = `
       <div class="expense-header">
         <span class="expense-unite">${badgeHtml} ${escapeHtml(dep.unite)}</span>
