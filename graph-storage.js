@@ -3,14 +3,15 @@
 // Dossier utilisé : "Immobilier 2025-2026/DEPENSES-IMMEUBLES"
 // (dans le dossier partagé, au même niveau que "VeroS" et
 // "GESTION-LOYERS" — voir /areas/veros.md et /areas/loyers-percus-pwa.md)
-// VERSION: v40
+// VERSION: v40 → nettoyé 16 août 2026 (fonctions mortes retirées)
+// Ne sert plus qu'au scan/OCR (sauvegarderFactureScannee) —
+// le reste (dépenses, justificatifs manuels) passe par Make.com
 // ==========================================================
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
 const DOSSIER_RACINE = "Immobilier 2025-2026";
 const DOSSIER_APP = "DEPENSES-IMMEUBLES";
 const SOUS_DOSSIER_JUSTIFICATIFS = "justificatifs";
-const FICHIER_DONNEES = "depenses-data.json";
 
 const GraphStorage = (() => {
 
@@ -54,69 +55,6 @@ const GraphStorage = (() => {
     await assurerDossier(`${DOSSIER_RACINE}/${DOSSIER_APP}/${SOUS_DOSSIER_JUSTIFICATIFS}`, "factures-scannees");
   }
 
-  // ---- Dépenses (fichier JSON unique) ----
-  // ---- Normaliser les dépenses : ajouter champs manquants (idFacture, etc.) ----
-  function normaliserDepenses(depenses) {
-    return depenses.map(d => ({
-      ...d,
-      // PHASE 1: Ajouter idFacture si absent (pour lier facture ↔ garantie)
-      idFacture: d.idFacture || ""
-    }));
-  }
-
-  async function chargerDepenses() {
-    const chemin = `${DOSSIER_RACINE}/${DOSSIER_APP}/${FICHIER_DONNEES}`;
-    const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
-    const resp = await appelGraph(url);
-    if (resp.status === 404) return [];
-    if (!resp.ok) throw new Error(`Échec lecture des dépenses (${resp.status})`);
-    const data = await resp.json();
-    // Normaliser: s'assurer que tous les champs requis existent
-    return normaliserDepenses(data);
-  }
-
-  async function sauvegarderDepenses(depenses) {
-    await assurerArborescence();
-    // PHASE 1: Normaliser avant sauvegarde (s'assurer que tous champs existent)
-    const depensesNormalisees = normaliserDepenses(depenses);
-    const chemin = `${DOSSIER_RACINE}/${DOSSIER_APP}/${FICHIER_DONNEES}`;
-    const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
-    const resp = await appelGraph(url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(depensesNormalisees, null, 2),
-      keepalive: true  // garde la connexion ouverte même si l'app/page se ferme (iOS)
-    });
-    if (!resp.ok) throw new Error(`Échec sauvegarde des dépenses (${resp.status})`);
-
-    // vérification par relecture (même principe que Gestion Loyers)
-    const relu = await chargerDepenses();
-    if (JSON.stringify(relu) !== JSON.stringify(depenses)) {
-      throw new Error("Vérification après sauvegarde non concordante");
-    }
-    return true;
-  }
-
-  // ---- Justificatifs (upload simple, jusqu'à 4 Mo) ----
-  async function televerserJustificatif(file, expenseId) {
-    await assurerArborescence();
-    if (file.size > 4 * 1024 * 1024) {
-      throw new Error("Fichier trop volumineux (max 4 Mo pour l'instant)");
-    }
-    const nomFichier = `${expenseId}_${file.name}`.replace(/[\\/:*?"<>|]/g, "_");
-    const chemin = `${DOSSIER_RACINE}/${DOSSIER_APP}/${SOUS_DOSSIER_JUSTIFICATIFS}/${nomFichier}`;
-    const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
-
-    const resp = await appelGraph(url, {
-      method: "PUT",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
-      body: file
-    });
-    if (!resp.ok) throw new Error(`Échec envoi du justificatif (${resp.status})`);
-    const item = await resp.json();
-    return { nom: file.name, webUrl: item.webUrl, itemId: item.id };
-  }
-
   // Upload facture scannée avec nommage explicite (date, fournisseur, montant)
   async function sauvegarderFactureScannee(fileData, fileName, dateFacture, fournisseur, montantTTC) {
     try {
@@ -127,7 +65,7 @@ const GraphStorage = (() => {
       console.error("❌ ERREUR assurerArborescence:", err);
       throw err;
     }
-    
+
     // Créer un nom de fichier explicite et trouvable par recherche
     // Format: YYYY-MM-DD_FOURNISSEUR_MONTANT_EUR.extension
     const montantStr = montantTTC ? montantTTC.toString().replace(".", ",") : "0";
@@ -136,7 +74,7 @@ const GraphStorage = (() => {
     const url = `${GRAPH_BASE}/me/drive/root:/${encoderChemin(chemin)}:/content`;
 
     console.log("Upload facture OneDrive:", { dateFacture, fournisseur, montantTTC, nomFichier, chemin });
-    
+
     const resp = await appelGraph(url, {
       method: "PUT",
       headers: { "Content-Type": "application/octet-stream" },
@@ -148,7 +86,7 @@ const GraphStorage = (() => {
     return { nom: nomFichier, webUrl: item.webUrl, itemId: item.id };
   }
 
-  return { chargerDepenses, sauvegarderDepenses, televerserJustificatif, sauvegarderFactureScannee, assurerArborescence };
+  return { sauvegarderFactureScannee, assurerArborescence };
 })();
 
 window.GraphStorage = GraphStorage;
