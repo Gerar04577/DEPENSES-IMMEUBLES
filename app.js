@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v59";
+const APP_VERSION = "v60";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 const WEBHOOK_URL = "https://hook.eu1.make.com/4i6tmoshu6ou5rg98qngyfi3sidq8f0p";  // ← AJOUTER
 
@@ -300,6 +300,7 @@ async function chargerDonnees() {
     // majStatutConnexion(true); ← SUPPRIMER: économise crédits Microsoft Graph
     render();
     renderSauvegarde();
+    majStatutChargement(true);
     return;
   } catch (err) {
     console.error("Échec webhook import, repli local:", err);
@@ -309,6 +310,20 @@ async function chargerDonnees() {
   const brut = localStorage.getItem("depenses-immeubles-data");
   depenses = brut ? JSON.parse(brut) : [];
   render();
+  majStatutChargement(false);
+}
+
+function majStatutChargement(succes) {
+  const el2 = el("loadStatus");
+  if (!el2) return;
+  if (succes) {
+    const heure = new Date().toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" });
+    el2.textContent = `Dernière sauvegarde chargée, vous pouvez travailler. Mais n'oubliez pas de sauvegarder ! (${heure})`;
+    el2.classList.remove("load-status-error");
+  } else {
+    el2.textContent = "⚠️ Chargement OneDrive impossible — données locales affichées, vérifiez votre connexion avant de travailler.";
+    el2.classList.add("load-status-error");
+  }
 }
 
 async function sauvegarderDonnees() {
