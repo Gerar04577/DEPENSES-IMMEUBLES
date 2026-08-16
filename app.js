@@ -3,7 +3,7 @@
 // Warranty Management + Scan Facture Integration
 // ==========================================================
 
-const APP_VERSION = "v56";
+const APP_VERSION = "v57";
 const SCAN_FACTURE_WEBHOOK = "https://hook.eu1.make.com/5ggr1j45di4au52v8ob81ilkiou15a9d";
 const WEBHOOK_URL = "https://hook.eu1.make.com/4i6tmoshu6ou5rg98qngyfi3sidq8f0p";  // ← AJOUTER
 
@@ -1609,9 +1609,9 @@ function attachEvents() {
 // ==========================================================
 async function verifierReprise() {
   const tentative = localStorage.getItem("depenses-immeubles-tentative-envoi");
-  if (tentative && window.GraphAuth && GraphAuth.estConnecte()) {
+  if (tentative) {
     try {
-      const data = await GraphStorage.chargerDepenses();
+      const data = await chargerViaWebhook();
       const local = localStorage.getItem("depenses-immeubles-data");
       if (local && JSON.stringify(data) === local) {
         localStorage.removeItem("depenses-immeubles-tentative-envoi");
